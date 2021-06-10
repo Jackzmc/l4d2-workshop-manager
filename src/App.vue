@@ -16,9 +16,14 @@
           </progress>
         </div>
         <p class="is-inline" style="margin-left: 1em">
-          {{formatBytes(update.bytes_downloaded)}} / {{formatBytes(update.bytes_total)}}
-          &nbsp; ({{(update.bytes_downloaded / update.bytes_total * 100).toFixed(1)}}%)
-          </p>
+          <template v-if="update.complete">
+            Complete 
+          </template>
+          <template v-else>
+            {{formatBytes(update.bytes_downloaded)}} / {{formatBytes(update.bytes_total)}}
+            &nbsp; ({{Math.round(update.bytes_downloaded / update.bytes_total * 100)}}%)
+          </template>
+        </p>
       </div>
     </div>
     <div v-for="(category, key) in files" :key="key">
@@ -80,6 +85,8 @@
 <script>
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
+
+const CONCURRENT_DOWNLOADS = 3
 
 export default {
   name: 'App',
@@ -148,10 +155,10 @@ export default {
     },
     //Updates all selected managed
     async update() {
-      const items = this.files.updateable.items.filter(item => this.files.updateable.selected[item.publishedfileid])
+      let items = this.files.updateable.items.filter(item => this.files.updateable.selected[item.publishedfileid])
       if(items.length == 0) return
       this.updating = true;
-      const promises = items.map(item => {
+      items.forEach(item => {
         this.$set(this.updates, item.publishedfileid, {
           bytes_total: item.file_size,
           bytes_downloaded: 0,
@@ -160,17 +167,24 @@ export default {
         })
         //TODO: Add back
         this.files.updateable.selected[item.publishedfileid] = false;
-        return invoke("download_addon", { item })
       })
-      Promise.all(promises)
-      .then(() => this.getItems())
-      .then(() => {
-        console.log('done')
-        this.updating = false
-        for(const item in items) {
-          this.$delete(this.updates, item.publishedfileid)
+      let running = 0;
+      let timer = setInterval(async() => {
+        if(items.length == 0) {
+          await this.getItems()
+          this.updating = false
+          for(const item in items) {
+            this.$delete(this.updates, item.publishedfileid)
+          }
+          return clearInterval(timer)
         }
-      })
+        if(running < CONCURRENT_DOWNLOADS) {
+          let item = items.shift();
+          running++
+          await invoke("download_addon", { item })
+          running--
+        }
+      }, 1000)
     },
     async getItems() {
       for(const category in this.files) {
