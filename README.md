@@ -1,24 +1,9 @@
-# test
+# l4d2-workshop-downloader-ui
 
-## Project setup
-```
-yarn install
-```
+A work in progress alternative to my own https://github.com/Jackzmc/l4d2-workshop-downloader that is a combination of rust and Vue.JS via Tauri.
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
+## Preview
 
-### Compiles and minifies for production
-```
-yarn build
-```
+## License
 
-### Lints and fixes files
-```
-yarn lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+MIT
