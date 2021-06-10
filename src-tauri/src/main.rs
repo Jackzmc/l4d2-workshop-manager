@@ -161,7 +161,7 @@ fn close_splashscreen(
 }
 
 #[tauri::command]
-async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) -> () {
+async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
   let config: config::Settings = match get_config() {
     Ok(config) => config,
     Err(err) => {
@@ -169,7 +169,7 @@ async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) 
         publishedfileid: None,
         error: err.to_string()
       }).ok();
-      return ()
+      return Err(err.to_string())
     }
   };
   let mut dest = {
@@ -210,18 +210,21 @@ async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) 
               error: err.to_string()
             }).ok();
             println!("Download for {} failed:\n{}", item.title, &err); 
+            return Err(err.to_string())
           }
         }
       }
+      dest.flush().ok();
       window.emit("progress", UpdatePayload {
         publishedfileid: item.publishedfileid.clone(),
         bytes_downloaded: downloaded,
         complete: true
       }).ok();
-      dest.flush().ok();
+      return Ok(())
     },
     Err(err) => {
       println!("Download failure for {}: {}", &item, err);
+      return Err(err.to_string())
     }
   }
 }
