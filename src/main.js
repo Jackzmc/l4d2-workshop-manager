@@ -11,6 +11,11 @@ Vue.component('font-awesome-icon', FontAwesomeIcon)
 
 Vue.config.productionTip = false
 
+import devtools from '@vue/devtools'
+if (process.env.NODE_ENV === 'development') {
+  devtools.connect(/* host, port */)
+}
+
 new Vue({
   render: h => h(App),
 }).$mount('#app')

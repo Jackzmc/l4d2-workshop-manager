@@ -7,15 +7,19 @@
         {{error}}
       </div>
     </article>
-    <div class="box">
-      <p v-for="(update,key) in updates" :key="key">
-        <u>{{key}}</u><br>
-        Downloaded: {{update.bytes_downloaded}}<br>
-        total: {{update.bytes_total}}<br>
-        left: {{update.bytes_total - update.bytes_downloaded}}<br>
-        %: {{update.bytes_downloaded / update.bytes_total * 100}}<br>
-        complete: {{update.complete ? 'yes' : 'no'}}<br>
-      </p>
+    <div class="box" v-if="updating">
+      <div v-for="(update,key) in updates" :key="key">
+        <b>{{update.title}}</b> <em>({{key}})</em><br>
+        <div style="width:60%" class="is-inline">
+          <progress class="progress is-success is-inline-block" :value="update.bytes_downloaded" :max="update.bytes_total" style="width:60%" >
+            {{update.bytes_downloaded / update.bytes_total * 100}}%
+          </progress>
+        </div>
+        <p class="is-inline" style="margin-left: 1em">
+          {{formatBytes(update.bytes_downloaded)}} / {{formatBytes(update.bytes_total)}}
+          &nbsp; ({{(update.bytes_downloaded / update.bytes_total * 100).toFixed(1)}}%)
+          </p>
+      </div>
     </div>
     <div v-for="(category, key) in files" :key="key">
       <template v-if="category.items.length > 0">
@@ -58,7 +62,7 @@
               </table>
               <hr>
               <b>Action for selected</b><br>
-              <div class="buttons">
+              <div class="buttons" v-if="!updating">
                 <a class="button is-primary" @click="update()">Update</a>
                 <a class="button is-success">Enable</a>
                 <a class="button is-danger">Disable</a>
@@ -84,6 +88,7 @@ export default {
       error: null,
       settings: null,
       updates: {},
+      updating: false,
       files: {
         updateable: {
           total_bytes: 0, 
@@ -143,32 +148,36 @@ export default {
     },
     //Updates all selected managed
     async update() {
-      const items = this.files.updateable.items.filter(file => this.files.updateable.selected[file.publishedfileid])
-      for(const item of items) {
+      const items = this.files.updateable.items.filter(item => this.files.updateable.selected[item.publishedfileid])
+      if(items.length == 0) return
+      this.updating = true;
+      const promises = items.map(item => {
         this.$set(this.updates, item.publishedfileid, {
           bytes_total: item.file_size,
           bytes_downloaded: 0,
-          complete: false
+          complete: false,
+          title: item.title
         })
-      }
-      console.log('updating', items)
-      try {
-        await listen('progress', ({payload}) => {
-          if(!payload.error) {
-            this.updates[payload.publishedfileid].bytes_downloaded = payload.bytes_downloaded
-            this.updates[payload.publishedfileid].complete = payload.complete
-            
-          }else{
-            console.log('complete', payload)
-          }
-        })
-
-        await invoke("download_addons", { items })
-      } catch (err) {
-        alert("Failure: " + err)
-      }
+        //TODO: Add back
+        this.files.updateable.selected[item.publishedfileid] = false;
+        return invoke("download_addon", { item })
+      })
+      Promise.all(promises)
+      .then(() => this.getItems())
+      .then(() => {
+        console.log('done')
+        this.updating = false
+        for(const item in items) {
+          this.$delete(this.updates, item.publishedfileid)
+        }
+      })
     },
     async getItems() {
+      for(const category in this.files) {
+        this.files[category].items = []
+        this.files[category].total_bytes = 0
+        this.files[category].selected = {}
+      }
       try {
         const items = await invoke('get_items')
         for(const file of items) {
@@ -198,14 +207,27 @@ export default {
       }
     }
   },
-  async mounted() {
-    this.getItems() 
+  async created() {
+    await this.getItems() 
+    await listen('progress', ({payload}) => {
+      if(payload.error) {
+        return console.error(`${payload.publishedfileid} -> ${payload.error}`)
+      }
+      this.updates[payload.publishedfileid] = {
+        ...this.updates[payload.publishedfileid],
+        bytes_downloaded: payload.bytes_downloaded,
+        complete: payload.complete
+      }
+    })
     try {
       this.settings = await invoke('get_config')
       console.log('settings', Object.assign({}, this.settings))
     } catch(err) {
       console.error('Could not get config: ', err)
     }
+  },
+  async mounted() {
+    await invoke('close_splashscreen')
   }
 }
 </script>

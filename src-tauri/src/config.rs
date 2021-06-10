@@ -29,6 +29,7 @@ impl DownloadEntry {
     }
 }
 
+#[allow(dead_code)]
 impl Downloads {
     pub fn load() -> Result<Downloads, String> {
         let path = Downloads::get_path();
@@ -112,6 +113,7 @@ pub struct Settings {
     pub gamedir: PathBuf
 }
 
+#[allow(dead_code)]
 impl Settings {
     pub fn new(path: PathBuf) -> Settings {
         Settings {

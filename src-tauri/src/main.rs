@@ -8,10 +8,13 @@ use std::path::PathBuf;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::time::{UNIX_EPOCH};
-use tauri::{Window};
-use futures::{stream, StreamExt};
+use tauri::{Manager, State, Window};
+use futures::{StreamExt};
 use std::{io::Write};
+use std::sync::{Arc, Mutex};
 
+struct SplashscreenWindow(Arc<Mutex<Window>>);
+struct MainWindow(Arc<Mutex<Window>>);
 
 mod config;
 
@@ -124,15 +127,7 @@ fn get_items() -> Result<Vec<File>, String> {
       item_type: ItemType::Unknown,
     });
   }
-  
   Ok(files)
-}
-
-struct Download {
-  file: std::fs::File,
-  item: steam_workshop_api::WorkshopItem,
-  bytes_downloaded: usize,
-  chunk: usize
 }
 
 
@@ -152,6 +147,17 @@ struct ErrorPayload {
 #[tauri::command]
 fn get_config() -> Result<config::Settings, String> {
   config::Settings::load()
+}
+
+#[tauri::command]
+fn close_splashscreen(
+  splashscreen: State<SplashscreenWindow>,
+  main: State<MainWindow>,
+) {
+  // Close splashscreen
+  splashscreen.0.lock().unwrap().close().unwrap();
+  // Show main window
+  main.0.lock().unwrap().show().unwrap();
 }
 
 #[tauri::command]
@@ -193,7 +199,7 @@ async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) 
               chunk_index = 0;
               window.emit("progress", UpdatePayload {
                 publishedfileid: item.publishedfileid.clone(),
-                bytes_downloaded:downloaded,
+                bytes_downloaded: downloaded,
                 complete: false
               }).ok();
             }
@@ -222,10 +228,21 @@ async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) 
 
 fn main() {
   tauri::Builder::default()
+  .setup(|app| {
+    // set the splashscreen and main windows to be globally available with the tauri state API
+    app.manage(SplashscreenWindow(Arc::new(Mutex::new(
+      app.get_window("splashscreen").unwrap(),
+    ))));
+    app.manage(MainWindow(Arc::new(Mutex::new(
+      app.get_window("main").unwrap(),
+    ))));
+    Ok(())
+  })
   .invoke_handler(tauri::generate_handler![
     get_items, 
     download_addon,
     get_config,
+    close_splashscreen
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
