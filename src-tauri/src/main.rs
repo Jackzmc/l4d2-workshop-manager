@@ -149,16 +149,13 @@ struct ErrorPayload {
   error: String
 }
 
-const CONCURRENT_REQUESTS: usize = 4;
-
 #[tauri::command]
 fn get_config() -> Result<config::Settings, String> {
   config::Settings::load()
 }
 
 #[tauri::command]
-fn download_addons(window: Window, items: Vec<steam_workshop_api::WorkshopItem>) -> () {
-  let mut downloads: Vec<Download> = Vec::with_capacity(items.len());
+async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) -> () {
   let config: config::Settings = match get_config() {
     Ok(config) => config,
     Err(err) => {
@@ -169,105 +166,65 @@ fn download_addons(window: Window, items: Vec<steam_workshop_api::WorkshopItem>)
       return ()
     }
   };
-  
-  for item in items {
-    
-    let dest = {
-      let fname = config.gamedir.join(format!("{}.vpk", item.publishedfileid));
-      std::fs::File::create(fname).expect("Could not create file")
-    };
-    let download = Download {
-      file: dest,
-      item: item.clone(),
-      bytes_downloaded: 0,
-      chunk: 0
-    };
-    downloads.push(download);
-  }
-  
-  let client = reqwest::Client::new();
-  
-  tauri::async_runtime::block_on(async {
-    stream::iter(downloads)
-    .map(|mut download: Download| {
-      let client = &client;
-      let window = &window;
-      async move {
-        match client
-          .get(&download.item.file_url)
-          .header("User-Agent", "L4D2-Workshop-Downloader")
-          .send()
-          .await
-        {
-          Ok(response) => {
-            let mut stream = response.bytes_stream();
-            while let Some(result) = stream.next().await {
-              match result {
-                Ok(chunk) => {
-                  if let Err(err) = download.file.write(&chunk) {
-                    println!("[{}] Write Error: {}", &download.item.publishedfileid, err);
-                    break;
-                  }
-                  download.bytes_downloaded += chunk.len();
-                  download.chunk += 1;
-                  if download.chunk > 100 {
-                    download.chunk = 0;
-                    window.emit("progress", UpdatePayload {
-                      publishedfileid: download.item.publishedfileid.clone(),
-                      bytes_downloaded: download.bytes_downloaded,
-                      complete: false
-                    }).ok();
-                  }
-                },
-                Err(err) => {
-                  window.emit("progress", ErrorPayload {
-                    publishedfileid: Some(download.item.publishedfileid.clone()),
-                    error: err.to_string()
-                  }).ok();
-                  println!("Download for {} failed:\n{}", &download.item.title, &err); 
-                }
-              }
+  let mut dest = {
+    let fname = config.gamedir.join(format!("{}.vpk", item.publishedfileid));
+    std::fs::File::create(fname).expect("Could not create file")
+  };
+  let mut downloaded: usize = 0;
+  match reqwest::Client::new()
+    .get(&item.file_url)
+    .header("User-Agent", "L4D2-Workshop-Downloader")
+    .send()
+    .await
+  {
+    Ok(response) => {
+      let mut stream = response.bytes_stream();
+      let mut chunk_index: u8 = 0;
+      while let Some(result) = stream.next().await {
+        match result {
+          Ok(chunk) => {
+            if let Err(err) = dest.write(&chunk) {
+              println!("[{}] Write Error: {}", &item.publishedfileid, err);
+              break;
             }
-            download.file.flush().ok();
+            downloaded += chunk.len();
+            chunk_index += 1;
+            if chunk_index > 100 {
+              chunk_index = 0;
+              window.emit("progress", UpdatePayload {
+                publishedfileid: item.publishedfileid.clone(),
+                bytes_downloaded:downloaded,
+                complete: false
+              }).ok();
+            }
           },
           Err(err) => {
-            println!("Download failure for {}: {}", &download.item, err);
+            window.emit("progress", ErrorPayload {
+              publishedfileid: Some(item.publishedfileid.clone()),
+              error: err.to_string()
+            }).ok();
+            println!("Download for {} failed:\n{}", item.title, &err); 
           }
         }
-        download
       }
-    })
-    .buffer_unordered(CONCURRENT_REQUESTS)
-    .for_each(|download| {
-      let mut downloads = config::Downloads::load().unwrap();
-      let entry = config::DownloadEntry::from_item(&download.item);
-      
-      match downloads.get_id_index(&entry.publishedfileid) {
-        Some(index) => downloads.set_download(index, entry),
-        None => downloads.add_download(entry)
-      }
-      downloads.save().ok();
-
-      let window = &window;
-      async move {
-        window.emit("progress", UpdatePayload {
-          publishedfileid: download.item.publishedfileid.clone(),
-          bytes_downloaded: download.bytes_downloaded,
-          complete: true
-        }).ok();
-        println!("Finished: {}", &download.item);
-      }
-    })
-    .await
-  })
+      window.emit("progress", UpdatePayload {
+        publishedfileid: item.publishedfileid.clone(),
+        bytes_downloaded: downloaded,
+        complete: true
+      }).ok();
+      dest.flush().ok();
+    },
+    Err(err) => {
+      println!("Download failure for {}: {}", &item, err);
+    }
+  }
 }
-
 
 fn main() {
   tauri::Builder::default()
   .invoke_handler(tauri::generate_handler![
     get_items, 
-    download_addons,
+    download_addon,
     get_config,
   ])
   .run(tauri::generate_context!())
