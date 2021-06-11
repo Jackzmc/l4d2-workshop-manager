@@ -69,12 +69,14 @@
                 </tfoot>
               </table>
               <hr>
-              <b>Action for selected</b><br>
-              <div class="buttons" v-if="!updating">
-                <a class="button is-primary" @click="update()">Update</a>
-                <a class="button is-success">Enable</a>
-                <a class="button is-danger">Disable</a>
-              </div>
+              <template v-if="!updating">
+                <b>Action for selected</b><br>
+                <div class="buttons">
+                  <a class="button is-primary" @click="update()">Update</a>
+                  <a class="button is-success">Enable</a>
+                  <a class="button is-danger">Disable</a>
+                </div>
+              </template>
             </div>
           </div>
         </div>
