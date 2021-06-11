@@ -87,7 +87,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
       fileids
     },
     Err(err) => {
-      state.logger.error("get_items", format!("get_vpks_in_folder returnd error: {}\nDirectory: {:?}", err, state.settings.gamedir));
+      state.logger.error("get_items", &format!("get_vpks_in_folder returnd error: {}\nDirectory: {:?}", err, state.settings.gamedir));
       return Err(err)
     }
   };
@@ -100,7 +100,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
     Ok(details) => details,
     Err(err) => { 
-      state.logger.error("get_items", format!("Failed to get normal item details: {}\nIDS: {:?}", err, fileids));
+      state.logger.error("get_items", &format!("Failed to get normal item details: {}\nIDS: {:?}", err, fileids));
       return Err(err.to_string())
     }
   };
@@ -154,7 +154,7 @@ fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, S
   let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.join("workshop").as_path()) {
     Ok(fileids) => fileids,
     Err(err) => {
-      state.logger.error("get_workshop_items", format!("Failed to get workshop items: {}", err));
+      state.logger.error("get_workshop_items", &format!("Failed to get workshop items: {}", err));
       return Err(err)
     }
   };
@@ -166,7 +166,7 @@ fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, S
   match Workshop::new(None).get_published_file_details(&fileids) {
     Ok(details) => return Ok(details),
     Err(err) => { 
-      state.logger.error("get_workshop_items", format!("Failed to get workshop item details: {}", err));
+      state.logger.error("get_workshop_items", &format!("Failed to get workshop item details: {}", err));
       return Err(err.to_string())
     }
   };
@@ -216,7 +216,7 @@ fn import_addon(
 
   if is_workshop {
     if let Err(err) = std::fs::rename(src_folder.join(&filename), dest_folder.join(&filename)) {
-      state.logger.error("import_addon", format!("Moving import for {} error: {}", item.publishedfileid, err));
+      state.logger.error("import_addon", &format!("Moving import for {} error: {}", item.publishedfileid, err));
       return Err(err.to_string());
     }
   }
@@ -224,10 +224,10 @@ fn import_addon(
   downloads.add_download(download);
 
   if let Err(err) = downloads.save() {
-    state.logger.error("import_addon", format!("Saving import for {} error: {}", item.publishedfileid, err));
+    state.logger.error("import_addon", &format!("Saving import for {} error: {}", item.publishedfileid, err));
     return Err(err.to_string());
   }
-  state.logger.logp(logger::LogLevel::NORMAL, "import_addon", format!("Imported item \"{}\" (id {}). IsWorkshop: {}", &item.title, item.publishedfileid, is_workshop));
+  state.logger.logp(logger::LogLevel::NORMAL, "import_addon", &format!("Imported item \"{}\" (id {}). IsWorkshop: {}", &item.title, item.publishedfileid, is_workshop));
   Ok(())
 }
 
@@ -240,7 +240,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
     std::fs::File::create(fname).expect("Could not create file")
   };
   let mut downloaded: usize = 0;
-  state.logger.logp(logger::LogLevel::NORMAL, "download_addons", format!("Starting download of file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
+  state.logger.logp(logger::LogLevel::NORMAL, "download_addons", &format!("Starting download of file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
   match reqwest::Client::new()
     .get(&item.file_url)
     .header("User-Agent", "L4D2-Workshop-Downloader")
@@ -254,7 +254,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         match result {
           Ok(chunk) => {
             if let Err(err) = dest.write(&chunk) {
-              state.logger.error("download_addon", format!("Write error for ID {}: {}", item.publishedfileid, err));
+              state.logger.error("download_addon", &format!("Write error for ID {}: {}", item.publishedfileid, err));
               println!("[{}] Write Error: {}", &item.publishedfileid, err);
               break;
             }
@@ -274,7 +274,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
               publishedfileid: Some(item.publishedfileid.clone()),
               error: err.to_string()
             }).ok();
-            state.logger.error("download_addon", format!("Chunk failure for ID {}: {}", item.publishedfileid, err));
+            state.logger.error("download_addon", &format!("Chunk failure for ID {}: {}", item.publishedfileid, err));
             println!("Download for {} failed:\n{}", item.title, &err); 
             return Err(err.to_string())
           }
@@ -292,7 +292,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         Some(index) => downloads.set_download(index, entry),
         None => downloads.add_download(entry)
       }
-      state.logger.logp(logger::LogLevel::NORMAL, "download_addon", format!("Downloaded file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
+      state.logger.logp(logger::LogLevel::NORMAL, "download_addon", &format!("Downloaded file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
       return Ok(())
     },
     Err(err) => {
