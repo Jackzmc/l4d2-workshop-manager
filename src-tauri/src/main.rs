@@ -52,10 +52,10 @@ struct UnknownFile {
 }
 
 #[tauri::command]
-fn get_items() -> Result<Vec<File>, String> {
+fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   let regex = Regex::new(r"([0-9]{7,})").unwrap();
   let mut unknown_ids = Vec::new();
-  let fileids = match Workshop::get_vpks_in_folder(&PathBuf::from(r"D:\_temp\rust_ws_test")) {
+  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir) {
     Ok(results) => {
       //Tries to find an ID to parse
       let mut fileids: Vec<String> = Vec::with_capacity(results.len());
@@ -65,7 +65,7 @@ fn get_items() -> Result<Vec<File>, String> {
         } else {
           //ItemType::Unknown
           let full_file = format!("{}.vpk", filename);
-          if let Ok(metadata) = std::fs::metadata(&PathBuf::from(r"D:\_temp\rust_ws_test").join(full_file)) {
+          if let Ok(metadata) = std::fs::metadata(&state.settings.gamedir.join(full_file)) {
             unknown_ids.push(UnknownFile {
               publishedfileid: filename.clone(), 
               file_size: Some(metadata.len()),
@@ -87,6 +87,11 @@ fn get_items() -> Result<Vec<File>, String> {
       return Err(err)
     }
   };
+
+  if fileids.is_empty() {
+    return Ok(Vec::new());
+  }
+
   let mut files: Vec<File> = Vec::with_capacity(fileids.len());
   let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
     Ok(details) => details,
@@ -251,6 +256,10 @@ fn main() {
         }
       }
     };
+    if !settings.gamedir.exists() {
+      eprintln!("ERROR: gamedir folder ({}) does not exist", settings.gamedir.to_string_lossy());
+      std::process::exit(1);
+    }
     let downloads = match config::Downloads::load() {
       Ok(downloads) => downloads,
       Err(_e) => {
@@ -285,7 +294,8 @@ fn prompt_game_dir() -> PathBuf {
     .join("left4dead2")
     .join("addons");
     if !path.exists() {
-      eprintln!("A valid directory was not specified. Exiting.");
+      std::fs::create_dir_all(&path).ok();
+      println!("Warn: left4dead2/addons folder missing, creating..");
     }
     return path
   } else {
