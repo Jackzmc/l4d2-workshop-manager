@@ -3,6 +3,9 @@
   windows_subsystem = "windows"
 )]
 
+mod config;
+mod logger;
+
 use steam_workshop_api::{Workshop, WorkshopItem};
 use std::path::PathBuf;
 use regex::Regex;
@@ -14,13 +17,14 @@ use std::sync::{Arc, Mutex};
 
 struct Data {
   settings: config::Settings,
-  downloads: Arc<Mutex<config::Downloads>>
+  downloads: Arc<Mutex<config::Downloads>>,
+  logger: logger::Logger
 }
 
 struct SplashscreenWindow(Arc<Mutex<Window>>);
 struct MainWindow(Arc<Mutex<Window>>);
 
-mod config;
+
 
 #[derive(Serialize, Deserialize)]
 enum ItemType {
@@ -83,7 +87,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
       fileids
     },
     Err(err) => {
-      println!("Error1: {}", err);
+      state.logger.error("get_items", format!("get_vpks_in_folder returnd error: {}\nDirectory: {:?}", err, state.settings.gamedir));
       return Err(err)
     }
   };
@@ -96,7 +100,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
     Ok(details) => details,
     Err(err) => { 
-      println!("Error2: {}", err);
+      state.logger.error("get_items", format!("Failed to get normal item details: {}\nIDS: {:?}", err, fileids));
       return Err(err.to_string())
     }
   };
@@ -109,7 +113,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
     match downloads.get_download(&detail.publishedfileid) {
       Some(download) => {
         let item_type = 
-        if detail.time_updated >= download.time_updated {
+        if detail.time_updated > download.time_updated {
           ItemType::Updateable
         } else {
           ItemType::Managed
@@ -126,8 +130,15 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
         });
       }
     }
-    
-    
+  }
+
+  if let Ok(workshop_items) = get_workshop_items(&state) {
+    for item in workshop_items {
+      files.push(File::Item {
+        item,
+        item_type: ItemType::Workshop
+      })
+    }
   }
   
   for unknown in unknown_ids {
@@ -137,6 +148,28 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
     });
   }
   Ok(files)
+}
+
+fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
+  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.join("workshop").as_path()) {
+    Ok(fileids) => fileids,
+    Err(err) => {
+      state.logger.error("get_workshop_items", format!("Failed to get workshop items: {}", err));
+      return Err(err)
+    }
+  };
+
+  if fileids.is_empty() {
+    return Ok(Vec::new());
+  }
+
+  match Workshop::new(None).get_published_file_details(&fileids) {
+    Ok(details) => return Ok(details),
+    Err(err) => { 
+      state.logger.error("get_workshop_items", format!("Failed to get workshop item details: {}", err));
+      return Err(err.to_string())
+    }
+  };
 }
 
 
@@ -170,6 +203,36 @@ fn close_splashscreen(
 }
 
 #[tauri::command]
+fn import_addon(
+  state: tauri::State<'_, Data>,
+  item: steam_workshop_api::WorkshopItem,
+  is_workshop: bool
+) -> Result<(), String> {
+  let dest_folder = &state.settings.gamedir;
+  let src_folder = if is_workshop { dest_folder.join("workshop") } else { state.settings.gamedir.clone() };
+
+  let filename = format!("{}.vpk", &item.publishedfileid);
+  let download = config::DownloadEntry::from_item(&item);
+
+  if is_workshop {
+    if let Err(err) = std::fs::rename(src_folder.join(&filename), dest_folder.join(&filename)) {
+      state.logger.error("import_addon", format!("Moving import for {} error: {}", item.publishedfileid, err));
+      return Err(err.to_string());
+    }
+  }
+  let mut downloads = state.downloads.lock().unwrap();
+  downloads.add_download(download);
+
+  if let Err(err) = downloads.save() {
+    state.logger.error("import_addon", format!("Saving import for {} error: {}", item.publishedfileid, err));
+    return Err(err.to_string());
+  }
+  state.logger.logp(logger::LogLevel::NORMAL, "import_addon", format!("Imported item \"{}\" (id {}). IsWorkshop: {}", &item.title, item.publishedfileid, is_workshop));
+  Ok(())
+}
+
+
+#[tauri::command]
 async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
   let config = &state.settings;
   let mut dest = {
@@ -177,6 +240,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
     std::fs::File::create(fname).expect("Could not create file")
   };
   let mut downloaded: usize = 0;
+  state.logger.logp(logger::LogLevel::NORMAL, "download_addons", format!("Starting download of file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
   match reqwest::Client::new()
     .get(&item.file_url)
     .header("User-Agent", "L4D2-Workshop-Downloader")
@@ -190,6 +254,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         match result {
           Ok(chunk) => {
             if let Err(err) = dest.write(&chunk) {
+              state.logger.error("download_addon", format!("Write error for ID {}: {}", item.publishedfileid, err));
               println!("[{}] Write Error: {}", &item.publishedfileid, err);
               break;
             }
@@ -209,6 +274,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
               publishedfileid: Some(item.publishedfileid.clone()),
               error: err.to_string()
             }).ok();
+            state.logger.error("download_addon", format!("Chunk failure for ID {}: {}", item.publishedfileid, err));
             println!("Download for {} failed:\n{}", item.title, &err); 
             return Err(err.to_string())
           }
@@ -220,13 +286,13 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         bytes_downloaded: downloaded,
         complete: true
       }).ok();
-      println!("Writing to file... {}", item.publishedfileid);
       let entry = config::DownloadEntry::from_item(&item);
       let mut downloads = state.downloads.lock().unwrap();
       match downloads.get_id_index(&item.publishedfileid) {
         Some(index) => downloads.set_download(index, entry),
         None => downloads.add_download(entry)
       }
+      state.logger.logp(logger::LogLevel::NORMAL, "download_addon", format!("Downloaded file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
       return Ok(())
     },
     Err(err) => {
@@ -256,8 +322,9 @@ fn main() {
         }
       }
     };
+    let logger = logger::Logger::new(settings.gamedir.join("downloader.log"));
     if !settings.gamedir.exists() {
-      eprintln!("ERROR: gamedir folder ({}) does not exist", settings.gamedir.to_string_lossy());
+      logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.gamedir.to_string_lossy()));
       std::process::exit(1);
     }
     let downloads = match config::Downloads::load() {
@@ -268,7 +335,8 @@ fn main() {
     };
     app.manage(Data {
       settings,
-      downloads: Arc::new(Mutex::new(downloads))
+      downloads: Arc::new(Mutex::new(downloads)),
+      logger
     });
     Ok(())
   })
@@ -276,7 +344,8 @@ fn main() {
     get_items, 
     download_addon,
     get_settings,
-    close_splashscreen
+    close_splashscreen,
+    import_addon
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
@@ -296,10 +365,11 @@ fn prompt_game_dir() -> PathBuf {
     if !path.exists() {
       std::fs::create_dir_all(&path).ok();
       println!("Warn: left4dead2/addons folder missing, creating..");
+      return prompt_game_dir();
     }
     return path
   } else {
-    eprintln!("A valid directory was not specified. Exiting.");
+    eprintln!("Could not open file dialog");
+    std::process::exit(1);
   }
-  return prompt_game_dir();
 }
