@@ -1,12 +1,18 @@
 <template>
-<div id="app" class="has-background-info">
-  <div class="container">
+<div id="app">
+  <div class="container" v-if="loading">
+    Loading Items...
+  </div>
+  <div class="container" v-else>
     <br>
     <article class="message is-danger" v-if="error">
       <div class="message-body">
         {{error}}
       </div>
     </article>
+    <div class="box" v-if="totalItems == 0">
+      No items found
+    </div>
     <div class="box" v-if="updating">
       <div v-for="(update,key) in updates" :key="key">
         <b>{{update.title}}</b> <em>({{key}})</em><br>
@@ -101,6 +107,7 @@ export default {
       settings: null,
       updates: {},
       updating: false,
+      loading: false,
       files: {
         updateable: {
           total_bytes: 0, 
@@ -141,6 +148,15 @@ export default {
     }
   },
   components: {
+  },
+  computed: {
+    totalItems() {
+      let count = 0;
+      for(const category in this.files) {
+        count += this.files[category].items.length
+      }
+      return count
+    }
   },
   methods: {
     formatBytes(bytes) {
@@ -193,6 +209,7 @@ export default {
       }, 1000)
     },
     async getItems() {
+      this.loading = true
       for(const category in this.files) {
         this.files[category].items = []
         this.files[category].total_bytes = 0
@@ -225,10 +242,15 @@ export default {
       }catch(error) {
         this.error = error.message
       }
+      this.loading = false
     }
   },
   async created() {
-    await this.getItems() 
+    try {
+      await this.getItems() 
+    } catch(err) {
+      this.error = err
+    }
     await listen('progress', ({payload}) => {
       if(payload.error) {
         return console.error(`${payload.publishedfileid} -> ${payload.error}`)
@@ -258,5 +280,8 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
+}
+html, body {
+  background-color: #3298dc !important
 }
 </style>
