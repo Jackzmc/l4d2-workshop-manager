@@ -1,10 +1,10 @@
 <template>
-<div class="card">
-    <header class="card-header" @click="toggle">
-    <p class="card-header-title" :style="canOpen ? 'cursor: pointer' : ''">
-        Managed Items ({{items.length}})
+<div class="card" v-if="items.length > 0">
+    <header class="card-header" @click="active = !active">
+    <p class="card-header-title" style="cursor: pointer">
+        Updateable Items ({{items.length}})
     </p>
-    <a class="card-header-icon" aria-label="more options" v-if="canOpen">
+    <a class="card-header-icon" aria-label="more options">
         <font-awesome-icon :icon="active ? 'angle-up' : 'angle-down'" size="lg" aria-hidden="true" />
     </a>
     </header>
@@ -43,6 +43,7 @@
         <hr>
         <b>Action for selected</b><br>
         <div class="buttons">
+            <a class="button is-primary" @click="update">Update</a>
             <a class="button is-success">Enable</a>
             <a class="button is-danger">Disable</a>
         </div>
@@ -52,14 +53,18 @@
 </template>
 
 <script>
+import { invoke } from '@tauri-apps/api/tauri'
+
 import { formatBytes, formatDate } from '@/js/utils'
+const CONCURRENT_DOWNLOADS = 3
+
 export default {
-    name: "Workshop",
     props: ['items'],
     data() {
         return {
             active: false,
-            selected: []
+            selected: [],
+            updates: {}
         }
     },
     computed: {
@@ -69,18 +74,47 @@ export default {
                 bytes += this.items[item].file_size
             }
             return bytes
-        },
-        canOpen() {
-            return this.items.length > 0
         }
     },
     methods: {
         formatBytes, 
         formatDate,
-        toggle() {
-            if(this.items.length == 0) return this.active = false
-            this.active = !this.active
-        }
-    }
+        async update() {
+            let items = this.files.updateable.items.filter(item => this.files.updateable.selected[item.publishedfileid])
+            if(items.length == 0) return
+            this.updating = true;
+            items.forEach(item => {
+                this.$set(this.updates, item.publishedfileid, {
+                bytes_total: item.file_size,
+                bytes_downloaded: 0,
+                complete: false,
+                title: item.title
+                })
+                //TODO: Add back
+                this.files.updateable.selected[item.publishedfileid] = false;
+            })
+            let running = 0;
+            let timer = setInterval(async() => {
+                if(items.length == 0 && running == 0) {
+                this.$emit('refreshItems')
+                this.updating = false
+                for(const item in items) {
+                    this.$delete(this.updates, item.publishedfileid)
+                }
+                return clearInterval(timer)
+                }
+                if(running < CONCURRENT_DOWNLOADS) {
+                let item = items.shift();
+                running++
+                await invoke("download_addon", { item })
+                .catch(err => this.updates[item.publishedfileid].error = err)
+                running--
+                }
+            }, 1000)
+        },
+    },
+    async created() {
+        
+    },
 }
 </script>

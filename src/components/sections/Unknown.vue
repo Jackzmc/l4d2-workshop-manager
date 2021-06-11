@@ -1,8 +1,8 @@
 <template>
 <div class="card">
     <header class="card-header" @click="toggle">
-    <p class="card-header-title"  :style="canOpen ? 'cursor: pointer' : ''">
-        Unmanaged Items ({{items.length}})
+    <p class="card-header-title" :style="canOpen ? 'cursor: pointer' : ''">
+        Unknown Items ({{items.length}})
     </p>
     <a class="card-header-icon" aria-label="more options" v-if="canOpen">
         <font-awesome-icon :icon="active ? 'angle-up' : 'angle-down'" size="lg" aria-hidden="true" />
@@ -10,6 +10,7 @@
     </header>
     <div class="card-content" v-if="active">
     <div class="content">
+        These items do not include a publishedfileid, therefore cannot be managed by this tool.
         <table class="table is-fullwidth ">
         <thead>
             <tr>
@@ -22,11 +23,7 @@
         <tbody>
             <tr v-for="item in items" :key="item.publishedfileid" >
             <td><input v-model="selected[item.publishedfileid]" class="checkbox is-large" type="checkbox" /></td>
-            <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
-                <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
-                    {{item.title || item.publishedfileid}}
-                </a>
-            </td>
+            <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">{{item.title || item.publishedfileid}}</td>
             <td>{{formatBytes(item.file_size)}}</td>
             <td>{{formatDate(item.time_updated)}}</td>
             </tr>
@@ -40,11 +37,6 @@
             </tr>
         </tfoot>
         </table>
-        <hr>
-        <b>Action for selected</b><br>
-        <div class="buttons">
-            <a class="button is-primary">Import Addons</a>
-        </div>
     </div>
     </div>
 </div>
