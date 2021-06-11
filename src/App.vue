@@ -260,6 +260,9 @@ export default {
         bytes_downloaded: payload.bytes_downloaded,
         complete: payload.complete
       }
+      if(payload.complete) {
+        setTimeout(() => this.$delete(this.updates, payload.publishedfileid), 5000)
+      }
     })
     try {
       this.settings = await invoke('get_settings')
