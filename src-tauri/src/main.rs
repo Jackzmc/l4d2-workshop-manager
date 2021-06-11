@@ -7,11 +7,15 @@ use steam_workshop_api::{Workshop, WorkshopItem};
 use std::path::PathBuf;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::time::{UNIX_EPOCH};
 use tauri::{Manager, State, Window};
 use futures::{StreamExt};
-use std::{io::Write};
+use std::{io::Write, time::{UNIX_EPOCH}};
 use std::sync::{Arc, Mutex};
+
+struct Data {
+  settings: config::Settings,
+  downloads: Arc<Mutex<config::Downloads>>
+}
 
 struct SplashscreenWindow(Arc<Mutex<Window>>);
 struct MainWindow(Arc<Mutex<Window>>);
@@ -145,8 +149,8 @@ struct ErrorPayload {
 }
 
 #[tauri::command]
-fn get_config() -> Result<config::Settings, String> {
-  config::Settings::load()
+fn get_settings(state: tauri::State<Data>) -> config::Settings {
+  state.settings.clone()
 }
 
 #[tauri::command]
@@ -161,17 +165,8 @@ fn close_splashscreen(
 }
 
 #[tauri::command]
-async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
-  let config: config::Settings = match get_config() {
-    Ok(config) => config,
-    Err(err) => {
-      &window.emit("progress", ErrorPayload {
-        publishedfileid: None,
-        error: err.to_string()
-      }).ok();
-      return Err(err.to_string())
-    }
-  };
+async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
+  let config = &state.settings;
   let mut dest = {
     let fname = config.gamedir.join(format!("{}.vpk", item.publishedfileid));
     std::fs::File::create(fname).expect("Could not create file")
@@ -220,6 +215,13 @@ async fn download_addon(window: Window, item: steam_workshop_api::WorkshopItem) 
         bytes_downloaded: downloaded,
         complete: true
       }).ok();
+      println!("Writing to file... {}", item.publishedfileid);
+      let entry = config::DownloadEntry::from_item(&item);
+      let mut downloads = state.downloads.lock().unwrap();
+      match downloads.get_id_index(&item.publishedfileid) {
+        Some(index) => downloads.set_download(index, entry),
+        None => downloads.add_download(entry)
+      }
       return Ok(())
     },
     Err(err) => {
@@ -239,14 +241,55 @@ fn main() {
     app.manage(MainWindow(Arc::new(Mutex::new(
       app.get_window("main").unwrap(),
     ))));
+    //TODO: Check if settings exists, if not, create new. exit on error (or send err)
+    let settings = match config::Settings::load() {
+      Ok(config) => config,
+      Err(_e) => {
+        let gamedir = prompt_game_dir();
+        config::Settings {
+          gamedir
+        }
+      }
+    };
+    let downloads = match config::Downloads::load() {
+      Ok(downloads) => downloads,
+      Err(_e) => {
+        config::Downloads::new()
+      }
+    };
+    app.manage(Data {
+      settings,
+      downloads: Arc::new(Mutex::new(downloads))
+    });
     Ok(())
   })
   .invoke_handler(tauri::generate_handler![
     get_items, 
     download_addon,
-    get_config,
+    get_settings,
     close_splashscreen
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
+}
+
+fn prompt_game_dir() -> PathBuf {
+  if let Some(file_path) = tinyfiledialogs::open_file_dialog(
+    "Choose where Left 4 Dead 2 is installed", 
+    "",
+    Some((&["left4dead2.exe"], "left4dead2.exe"))
+  ) {
+    let path = PathBuf::from(file_path)
+    .parent()
+    .unwrap()
+    .join("left4dead2")
+    .join("addons");
+    if !path.exists() {
+      eprintln!("A valid directory was not specified. Exiting.");
+    }
+    return path
+  } else {
+    eprintln!("A valid directory was not specified. Exiting.");
+  }
+  return prompt_game_dir();
 }
