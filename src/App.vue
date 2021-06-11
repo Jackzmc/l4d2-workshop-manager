@@ -1,5 +1,5 @@
 <template>
-<div id="app" class=" has-background-info">
+<div id="app" class="has-background-info">
   <div class="container">
     <br>
     <article class="message is-danger" v-if="error">
@@ -15,15 +15,18 @@
             {{update.bytes_downloaded / update.bytes_total * 100}}%
           </progress>
         </div>
-        <p class="is-inline" style="margin-left: 1em">
-          <template v-if="update.complete">
+        <div class="is-inline" style="margin-left: 1em">
+          <p v-if="update.error" class="has-text-danger">
+            <b>Failed: </b>{{update.error}}
+          </p>
+          <template v-else-if="update.complete">
             Complete 
           </template>
           <template v-else>
             {{formatBytes(update.bytes_downloaded)}} / {{formatBytes(update.bytes_total)}}
             &nbsp; ({{Math.round(update.bytes_downloaded / update.bytes_total * 100)}}%)
           </template>
-        </p>
+        </div>
       </div>
     </div>
     <div v-for="(category, key) in files" :key="key">
@@ -170,7 +173,7 @@ export default {
       })
       let running = 0;
       let timer = setInterval(async() => {
-        if(items.length == 0) {
+        if(items.length == 0 && running == 0) {
           await this.getItems()
           this.updating = false
           for(const item in items) {
@@ -182,6 +185,7 @@ export default {
           let item = items.shift();
           running++
           await invoke("download_addon", { item })
+          .catch(err => this.updates[item.publishedfileid].error = err)
           running--
         }
       }, 1000)
@@ -234,7 +238,7 @@ export default {
       }
     })
     try {
-      this.settings = await invoke('get_config')
+      this.settings = await invoke('get_settings')
       console.log('settings', Object.assign({}, this.settings))
     } catch(err) {
       console.error('Could not get config: ', err)
