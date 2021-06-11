@@ -31,12 +31,15 @@ impl DownloadEntry {
 
 #[allow(dead_code)]
 impl Downloads {
+    pub fn new() -> Downloads {
+        Downloads {
+            downloads: Vec::new()
+        }
+    }
     pub fn load() -> Result<Downloads, String> {
         let path = Downloads::get_path();
         if !path.exists() {
-            let dl = Downloads { 
-                downloads: Vec::new() 
-            };
+            let dl = Downloads::new();
             dl.save().ok();
             return Ok(dl)
         }
@@ -108,7 +111,7 @@ impl Downloads {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub gamedir: PathBuf
 }

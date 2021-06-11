@@ -40,7 +40,7 @@ dependencies = [
  "steam-workshop-api",
  "tauri",
  "tauri-build",
- "tokio",
+ "tinyfiledialogs",
 ]
 
 [[package]]
