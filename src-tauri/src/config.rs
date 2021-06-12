@@ -113,14 +113,16 @@ impl Downloads {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
-    pub gamedir: PathBuf
+    pub gamedir: PathBuf,
+    pub version: Option<String>
 }
 
 #[allow(dead_code)]
 impl Settings {
     pub fn new(path: PathBuf) -> Settings {
         Settings {
-            gamedir: path
+            gamedir: path,
+            version: None
         }
     }
     pub fn load() -> Result<Settings, String> {
@@ -139,7 +141,8 @@ impl Settings {
             Err(e) => return Err(e.to_string())
         }
     }
-    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.version = Some(env!("CARGO_PKG_VERSION").to_string());
         fs::write(Settings::get_path(), serde_json::to_string(&self).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         Ok(())
     }
