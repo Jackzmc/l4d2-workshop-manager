@@ -1,5 +1,70 @@
 <template>
 <div id="app">
+  <div class="columns is-gapless">
+    <div class="column is-3">
+      <nav class="panel is-link">
+        <p class="panel-heading not-rounded">
+          Items
+        </p>
+        <a class="panel-block is-active" @click="section == $options.SECTIONS.Updateable">
+          <span class="icon-text">
+            <span class="icon">
+              <font-awesome-icon icon="list" aria-hidden="true" />
+            </span>
+            <span>Updateable ({{files.updateable.length}})</span>
+          </span>
+        </a>
+        <a class="panel-block" @click="section == $options.SECTIONS.Managed">
+          <span class="icon-text">
+            <span class="icon">
+              <font-awesome-icon icon="list" aria-hidden="true" />
+            </span>
+            <span>Managed ({{files.managed.length}})</span>
+          </span>
+        </a>
+        <a class="panel-block" @click="test">
+          <span class="icon-text">
+            <span class="icon">
+              <font-awesome-icon icon="list" aria-hidden="true" />
+            </span>
+            <span>Unmanaged ({{files.unmanaged.length}})</span>
+          </span>
+        </a>
+        <a class="panel-block">
+          <span class="icon-text">
+            <span class="icon">
+              <font-awesome-icon icon="list" aria-hidden="true" />
+            </span>
+            <span>Workshop ({{files.workshop.length}})</span>
+          </span>
+        </a>
+        <a class="panel-block bold-line">
+          <span class="icon-text">
+            <span class="icon">
+              <font-awesome-icon icon="list" aria-hidden="true" />
+            </span>
+            <span>Unknown ({{files.unknown.length}})</span>
+          </span>
+        </a>
+        <a class="panel-block">
+          <span class="icon-text">
+            <span class="icon">
+              <font-awesome-icon icon="cog" aria-hidden="true" />
+            </span>
+            <span>Settings</span>
+          </span>
+        </a>
+        <div class="panel-block">
+          <button class="button is-success is-outlined is-fullwidth">
+            Add New
+          </button>
+        </div>
+      </nav>
+    </div>
+    <div class="column">
+      <component :is="section" :items="items"/>
+    </div>
+  </div>
   <div class="container" v-if="loading">
     Loading Items...
   </div>
@@ -62,19 +127,26 @@ import Workshop from '@/components/sections/Workshop.vue'
 import Unknown from '@/components/sections/Unknown.vue'
 import AddNew from '@/components/sections/AddNew.vue'
 
+import test from '@/components/sections/test.vue'
+
 import { formatBytes, formatDate } from '@/js/utils'
 
+const SECTIONS = {
+  Updateable,
+  Managed,
+  Unmanaged,
+  Workshop,
+  Unknown,
+  AddNew,
+  test
+}
 
 export default {
   name: 'App',
   components: {
-    Updateable,
-    Managed,
-    Unmanaged,
-    Workshop,
-    Unknown,
-    AddNew
+    ...SECTIONS
   },
+  SECTIONS,
   data() {
     return {
       error: null,
@@ -89,7 +161,9 @@ export default {
         workshop: [],
         unknown: [],
       },
-      total_bytes: {}
+      total_bytes: {},
+      section: null,
+      items: null
     }
   },
   computed: {
@@ -99,9 +173,13 @@ export default {
         count += this.files[category].length
       }
       return count
-    }
+    },
   },
   methods: {
+    test() {
+      this.items = this.files['updateable']
+      this.section = SECTIONS.test
+    },
     formatBytes, 
     formatDate,
     //Updates all selected managed
@@ -178,7 +256,13 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
 }
-html, body {
-  background-color: #3298dc !important
+.not-rounded {
+  border-radius: 0 !important;
 }
+.bold-line {
+  border-bottom: 1px solid rgba(53, 51, 51, 0.336)!important
+}
+/* html, body {
+  background-color: #3298dc !important
+} */
 </style>

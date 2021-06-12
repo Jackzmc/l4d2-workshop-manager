@@ -320,7 +320,7 @@ fn main() {
         let gamedir = prompt_game_dir();
         let mut settings = config::Settings::new(gamedir);
         if let Err(err) = settings.save() {
-          logger.warn("setup", format!("Could not save settings: {}", err));
+          logger.warn("setup", &format!("Could not save settings: {}", err));
         }
         settings
       }
