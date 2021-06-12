@@ -313,16 +313,18 @@ fn main() {
       app.get_window("main").unwrap(),
     ))));
     //TODO: Check if settings exists, if not, create new. exit on error (or send err)
+    let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
     let settings = match config::Settings::load() {
       Ok(config) => config,
       Err(_e) => {
         let gamedir = prompt_game_dir();
-        config::Settings {
-          gamedir
+        let mut settings = config::Settings::new(gamedir);
+        if let Err(err) = settings.save() {
+          logger.warn("setup", format!("Could not save settings: {}", err));
         }
+        settings
       }
     };
-    let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
     if !settings.gamedir.exists() {
       logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.gamedir.to_string_lossy()));
       std::process::exit(1);
