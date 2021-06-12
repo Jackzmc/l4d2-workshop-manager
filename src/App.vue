@@ -1,117 +1,46 @@
 <template>
-<div id="app">
-  <div class="columns is-gapless">
-    <div class="column is-3">
-      <nav class="panel is-link">
-        <p class="panel-heading not-rounded">
-          Items
-        </p>
-        <a class="panel-block is-active" @click="section == $options.SECTIONS.Updateable">
-          <span class="icon-text">
-            <span class="icon">
-              <font-awesome-icon icon="list" aria-hidden="true" />
-            </span>
-            <span>Updateable ({{files.updateable.length}})</span>
-          </span>
-        </a>
-        <a class="panel-block" @click="section == $options.SECTIONS.Managed">
-          <span class="icon-text">
-            <span class="icon">
-              <font-awesome-icon icon="list" aria-hidden="true" />
-            </span>
-            <span>Managed ({{files.managed.length}})</span>
-          </span>
-        </a>
-        <a class="panel-block" @click="test">
-          <span class="icon-text">
-            <span class="icon">
-              <font-awesome-icon icon="list" aria-hidden="true" />
-            </span>
-            <span>Unmanaged ({{files.unmanaged.length}})</span>
-          </span>
-        </a>
-        <a class="panel-block">
-          <span class="icon-text">
-            <span class="icon">
-              <font-awesome-icon icon="list" aria-hidden="true" />
-            </span>
-            <span>Workshop ({{files.workshop.length}})</span>
-          </span>
-        </a>
-        <a class="panel-block bold-line">
-          <span class="icon-text">
-            <span class="icon">
-              <font-awesome-icon icon="list" aria-hidden="true" />
-            </span>
-            <span>Unknown ({{files.unknown.length}})</span>
-          </span>
-        </a>
-        <a class="panel-block">
-          <span class="icon-text">
-            <span class="icon">
-              <font-awesome-icon icon="cog" aria-hidden="true" />
-            </span>
-            <span>Settings</span>
-          </span>
-        </a>
-        <div class="panel-block">
-          <button class="button is-success is-outlined is-fullwidth">
-            Add New
-          </button>
-        </div>
-      </nav>
-    </div>
-    <div class="column">
-      <component :is="section" :items="items"/>
-    </div>
-  </div>
-  <div class="container" v-if="loading">
-    Loading Items...
-  </div>
-  <div class="container" v-else>
-    <br>
-    <article class="message is-danger" v-if="error">
-      <div class="message-body">
-        {{error}}
-      </div>
-    </article>
-    <div class="box" v-if="totalItems == 0">
-      No items found
-    </div>
-    <div class="box" v-if="updating">
-      <div v-for="(update,key) in updates" :key="key">
-        <b>{{update.title}}</b> <em>({{key}})</em><br>
-        <div style="width:60%" class="is-inline">
-          <progress class="progress is-success is-inline-block" :value="update.bytes_downloaded" :max="update.bytes_total" style="width:60%" >
-            {{update.bytes_downloaded / update.bytes_total * 100}}%
-          </progress>
-        </div>
-        <div class="is-inline" style="margin-left: 1em">
-          <p v-if="update.error" class="has-text-danger">
-            <b>Failed: </b>{{update.error}}
+<div>
+  <TitleBar />
+  <br>
+  <div id="app">
+    <div class="columns is-gapless">
+      <div class="column is-3">
+        <nav class="panel is-link">
+          <p class="panel-heading not-rounded">
+            Items
           </p>
-          <template v-else-if="update.complete">
-            Complete 
-          </template>
-          <template v-else>
-            {{formatBytes(update.bytes_downloaded)}} / {{formatBytes(update.bytes_total)}}
-            &nbsp; ({{Math.round(update.bytes_downloaded / update.bytes_total * 100)}}%)
-          </template>
-        </div>
+          <a v-for="(key, index) in Object.keys($options.MAIN_SECTIONS)" :key="key"
+            :class="['panel-block', {'panel-active': section.id == key, 'bold-line': index == Object.keys($options.MAIN_SECTIONS).length - 1}]" 
+            @click="openSection(key)"
+          >
+            <span class="icon-text">
+              <span class="icon">
+                <font-awesome-icon icon="list" aria-hidden="true" />
+              </span>
+              <span>{{key}} ({{files[key.toLowerCase()].length}})</span>
+            </span>
+          </a>
+          <a class="panel-block" @click="openSection('Settings')">
+            <span class="icon-text">
+              <span class="icon">
+                <font-awesome-icon icon="cog" aria-hidden="true" />
+              </span>
+              <span>Settings</span>
+            </span>
+          </a>
+          <div class="panel-block" style="height:100%">
+            <button class="button is-success is-outlined is-fullwidth">
+              Add New
+            </button>
+          </div>
+        </nav>
+        <p class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
+      </div>
+      <div class="column">
+        <component :is="section.component" :items="items" @refreshItems="getItems" v-bind="section.props" />
       </div>
     </div>
-    <Updateable :items="files.updateable" @refreshItems="getItems" />
-    <br>
-    <Managed :items="files.managed" />
-    <br>
-    <Unmanaged :items="files.unmanaged" />
-    <br>
-    <Workshop :items="files.workshop" />
-    <br>
-    <Unknown :items="files.unknown" />
-    <br>
-    <AddNew />
-    <br>
+    
   </div>
 </div>
 </template>
@@ -126,26 +55,36 @@ import Unmanaged from '@/components/sections/Unmanaged.vue'
 import Workshop from '@/components/sections/Workshop.vue'
 import Unknown from '@/components/sections/Unknown.vue'
 import AddNew from '@/components/sections/AddNew.vue'
+import Settings from '@/components/sections/Settings.vue'
+
+import TitleBar from '@/components/Titlebar.vue'
 
 import test from '@/components/sections/test.vue'
 
 import { formatBytes, formatDate } from '@/js/utils'
 
-const SECTIONS = {
+const MAIN_SECTIONS = {
   Updateable,
   Managed,
   Unmanaged,
   Workshop,
   Unknown,
+}
+
+const SECTIONS = {
+  ...MAIN_SECTIONS,
   AddNew,
+  Settings,
   test
 }
 
 export default {
   name: 'App',
   components: {
-    ...SECTIONS
+    ...SECTIONS,
+    TitleBar
   },
+  MAIN_SECTIONS,
   SECTIONS,
   data() {
     return {
@@ -162,7 +101,11 @@ export default {
         unknown: [],
       },
       total_bytes: {},
-      section: null,
+      section: {
+        component: null,
+        props: null,
+        ida: null
+      },
       items: null
     }
   },
@@ -176,9 +119,22 @@ export default {
     },
   },
   methods: {
-    test() {
-      this.items = this.files['updateable']
-      this.section = SECTIONS.test
+    debug(a,b) {
+      console.log(a,b,a==b)
+    },
+    openSection(name) {
+      this.items = this.files[name.toLowerCase()]
+      let sectionProps = {}
+      if(name === "Settings") {
+        this.section.component = SECTIONS.Settings
+        sectionProps = {
+          settings: this.settings
+        }
+      }else{
+        this.section.component = SECTIONS.test
+      }
+      this.section.id = name
+      this.section.props = sectionProps
     },
     formatBytes, 
     formatDate,
@@ -261,6 +217,18 @@ export default {
 }
 .bold-line {
   border-bottom: 1px solid rgba(53, 51, 51, 0.336)!important
+}
+.panel:not(:last-child) {
+  margin-bottom: 0 !important;
+}
+.panel-active {
+  background-color: #1176dbce;
+  color: #F7F6F6 !important;
+  font-weight: 700;
+}
+.panel-active:hover {
+  background-color: #1176dbce !important;
+  color: #F7F6F6
 }
 /* html, body {
   background-color: #3298dc !important
