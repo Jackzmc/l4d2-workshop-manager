@@ -11,7 +11,7 @@
     </thead>
     <tbody>
         <tr v-for="item in items" :key="item.publishedfileid" >
-        <td><input v-model="selected[item.publishedfileid]" class="checkbox is-large" type="checkbox" /></td>
+        <td><b-checkbox v-model="selected[item.publishedfileid]" class="checkbox" type="checkbox" /></td>
         <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
             <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
                 {{item.title || item.publishedfileid}}
@@ -34,7 +34,7 @@
     <div class="container ml-5" v-if="hasItemSelected">
         <b>Action for selected items</b><br>
         <div class="buttons">
-            <a class="button is-primary" @click="update">Update</a>
+            <a class="button is-info" @click="update">Update</a>
             <a class="button is-success">Enable</a>
             <a class="button is-danger">Disable</a>
         </div>

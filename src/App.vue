@@ -5,7 +5,7 @@
   <div id="app">
     <div class="columns is-gapless">
       <div class="column is-3">
-        <nav class="panel is-link">
+        <nav class="panel is-info">
           <p class="panel-heading not-rounded">
             Items
           </p>
