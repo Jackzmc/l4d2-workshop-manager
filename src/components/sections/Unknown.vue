@@ -23,7 +23,7 @@
         <tbody>
             <tr v-for="item in items" :key="item.publishedfileid" >
             <td><input v-model="selected[item.publishedfileid]" class="checkbox is-large" type="checkbox" /></td>
-            <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">{{item.title || item.publishedfileid}}</td>
+            <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">{{item.title || item.publishedfileid}}.vpk</td>
             <td>{{formatBytes(item.file_size)}}</td>
             <td>{{formatDate(item.time_updated)}}</td>
             </tr>
@@ -49,7 +49,7 @@ export default {
     data() {
         return {
             active: false,
-            selected: []
+            selected: {}
         }
     },
     computed: {

@@ -40,11 +40,13 @@
             </tr>
         </tfoot>
         </table>
-        <hr>
-        <b>Action for selected</b><br>
-        <div class="buttons">
-            <a class="button is-primary">Import Addons</a>
-        </div>
+        <template v-if="hasItemSelected">
+            <hr>
+            <b>Action for selected</b><br>
+            <div class="buttons">
+                <a class="button is-primary" @click="importAddons">Import Addons</a>
+            </div>
+        </template>
     </div>
     </div>
 </div>
@@ -57,7 +59,7 @@ export default {
     data() {
         return {
             active: false,
-            selected: []
+            selected: {}
         }
     },
     computed: {
@@ -70,6 +72,12 @@ export default {
         },
         canOpen() {
             return this.items.length > 0
+        },
+        hasItemSelected() {
+           for(const item in this.selected) {
+               if(this.selected[item] === true) return true
+           } 
+           return false;
         }
     },
     methods: {
@@ -78,6 +86,11 @@ export default {
         toggle() {
             if(this.items.length == 0) return this.active = false
             this.active = !this.active
+        },
+        importAddons() {
+            for(const id in this.selected) {
+                console.log(this.items[id])
+            }
         }
     }
 }

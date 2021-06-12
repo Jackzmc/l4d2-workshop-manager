@@ -53,7 +53,7 @@ export default {
     data() {
         return {
             active: false,
-            selected: []
+            selected: {}
         }
     },
     computed: {
@@ -75,6 +75,6 @@ export default {
             if(this.items.length == 0) return this.active = false
             this.active = !this.active
         }
-    }
+    },
 }
 </script>

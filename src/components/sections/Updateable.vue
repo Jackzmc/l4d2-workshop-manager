@@ -40,13 +40,15 @@
             </tr>
         </tfoot>
         </table>
-        <hr>
-        <b>Action for selected</b><br>
-        <div class="buttons">
-            <a class="button is-primary" @click="update">Update</a>
-            <a class="button is-success">Enable</a>
-            <a class="button is-danger">Disable</a>
-        </div>
+        <template v-if="hasItemSelected">
+            <hr>
+            <b>Action for selected</b><br>
+            <div class="buttons">
+                <a class="button is-primary" @click="update">Update</a>
+                <a class="button is-success">Enable</a>
+                <a class="button is-danger">Disable</a>
+            </div>
+        </template>
     </div>
     </div>
 </div>
@@ -63,7 +65,7 @@ export default {
     data() {
         return {
             active: false,
-            selected: [],
+            selected: {},
             updates: {}
         }
     },
@@ -74,6 +76,12 @@ export default {
                 bytes += this.items[item].file_size
             }
             return bytes
+        },
+        hasItemSelected() {
+           for(const item in this.selected) {
+               if(this.selected[item] === true) return true
+           } 
+           return false;
         }
     },
     methods: {

@@ -59,7 +59,7 @@ export default {
     data() {
         return {
             active: false,
-            selected: []
+            selected: {}
         }
     },
     computed: {
