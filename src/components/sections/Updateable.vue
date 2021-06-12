@@ -88,35 +88,34 @@ export default {
         formatBytes, 
         formatDate,
         async update() {
-            let items = this.files.updateable.items.filter(item => this.files.updateable.selected[item.publishedfileid])
+            let items = this.items.filter(item => this.selected[item.publishedfileid])
             if(items.length == 0) return
             this.updating = true;
             items.forEach(item => {
                 this.$set(this.updates, item.publishedfileid, {
-                bytes_total: item.file_size,
-                bytes_downloaded: 0,
-                complete: false,
-                title: item.title
+                    bytes_total: item.file_size,
+                    bytes_downloaded: 0,
+                    complete: false,
+                    title: item.title
                 })
                 //TODO: Add back
-                this.files.updateable.selected[item.publishedfileid] = false;
+                this.selected[item.publishedfileid] = false;
             })
             let running = 0;
             let timer = setInterval(async() => {
                 if(items.length == 0 && running == 0) {
-                this.$emit('refreshItems')
-                this.updating = false
-                for(const item in items) {
-                    this.$delete(this.updates, item.publishedfileid)
-                }
-                return clearInterval(timer)
-                }
-                if(running < CONCURRENT_DOWNLOADS) {
-                let item = items.shift();
-                running++
-                await invoke("download_addon", { item })
-                .catch(err => this.updates[item.publishedfileid].error = err)
-                running--
+                    this.$emit('refreshItems')
+                    this.updating = false
+                    for(const item in items) {
+                        this.$delete(this.updates, item.publishedfileid)
+                    }
+                    return clearInterval(timer)
+                }else if(running < CONCURRENT_DOWNLOADS) {
+                    let item = items.shift();
+                    running++
+                    await invoke("download_addon", { item })
+                    .catch(err => this.updates[item.publishedfileid].error = err)
+                    running--
                 }
             }, 1000)
         },

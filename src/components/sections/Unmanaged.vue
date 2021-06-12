@@ -53,6 +53,8 @@
 </template>
 
 <script>
+import { invoke } from '@tauri-apps/api/tauri'
+
 import { formatBytes, formatDate } from '@/js/utils'
 export default {
     props: ['items'],
@@ -88,9 +90,20 @@ export default {
             this.active = !this.active
         },
         importAddons() {
-            for(const id in this.selected) {
-                console.log(this.items[id])
-            }
+            let items = this.items.filter(item => this.selected[item.publishedfileid])
+            let running = 0;
+            let timer = setInterval(async() => {
+                if(items.length == 0 && running == 0) {
+                    this.$emit('refreshItems')
+                    this.updating = false
+                    return clearInterval(timer)
+                }else if(running < 6) {
+                    let item = items.shift();
+                    running++
+                    await invoke("import_addon", { item, is_workshop: false })
+                    running--
+                }
+            }, 1000)
         }
     }
 }
