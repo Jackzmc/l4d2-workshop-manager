@@ -55,6 +55,7 @@
         "title": "L4D2 Workshop Manager",
         "width": 1280,
         "height": 720,
+        "decorations": false,
         "resizable": true,
         "fullscreen": false
       },
