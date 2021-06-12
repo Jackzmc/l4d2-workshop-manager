@@ -35,15 +35,17 @@
         </div>
       </div>
     </div>
-    <Updateable :items="files.updateable.items" @refreshItems="getItems" />
+    <Updateable :items="files.updateable" @refreshItems="getItems" />
     <br>
-    <Managed :items="files.managed.items" />
+    <Managed :items="files.managed" />
     <br>
-    <Unmanaged :items="files.unmanaged.items" />
+    <Unmanaged :items="files.unmanaged" />
     <br>
-    <Workshop :items="files.workshop.items" />
+    <Workshop :items="files.workshop" />
     <br>
-    <Unknown :items="files.unknown.items" />
+    <Unknown :items="files.unknown" />
+    <br>
+    <AddNew />
     <br>
   </div>
 </div>
@@ -58,6 +60,7 @@ import Managed from '@/components/sections/Managed.vue'
 import Unmanaged from '@/components/sections/Unmanaged.vue'
 import Workshop from '@/components/sections/Workshop.vue'
 import Unknown from '@/components/sections/Unknown.vue'
+import AddNew from '@/components/sections/AddNew.vue'
 
 import { formatBytes, formatDate } from '@/js/utils'
 
@@ -69,7 +72,8 @@ export default {
     Managed,
     Unmanaged,
     Workshop,
-    Unknown
+    Unknown,
+    AddNew
   },
   data() {
     return {
@@ -79,40 +83,11 @@ export default {
       updating: false,
       loading: false,
       files: {
-        updateable: {
-          total_bytes: 0, 
-          items: [],
-          selected: {},
-          title: 'Update Pending Items',
-          active: true
-        },
-        managed: { 
-          total_bytes: 0, 
-          items: [],
-          selected: {},
-          title: "Managed Items",
-          active: true
-        },
-        unmanaged: { 
-          total_bytes: 0, 
-          items: [],
-          selected: {},
-          title: "Unmanaged Items",
-          active: false
-        },
-        workshop: {
-          total_bytes: 0, 
-          items: [],
-          selected: {},
-          title: "Workshop Items",
-          active: false
-        },
-        unknown: {
-          items: [],
-          selected: {},
-          title: "Unknown Items",
-          active: false
-        }
+        updateable: [],
+        managed: [],
+        unmanaged: [],
+        workshop: [],
+        unknown: [],
       },
       total_bytes: {}
     }
@@ -121,7 +96,7 @@ export default {
     totalItems() {
       let count = 0;
       for(const category in this.files) {
-        count += this.files[category].items.length
+        count += this.files[category].length
       }
       return count
     }
@@ -134,9 +109,7 @@ export default {
     async getItems() {
       this.loading = true
       for(const category in this.files) {
-        this.files[category].items = []
-        this.files[category].total_bytes = 0
-        this.files[category].selected = {}
+        this.files[category] = []
       }
       try {
         const items = await invoke('get_items')
@@ -158,9 +131,7 @@ export default {
             default: 
               category = "unmanaged";
           }
-          this.files[category].total_bytes += file.item.file_size
-          this.files[category].items.push(file.item)
-          this.$set(this.files[category].selected, file.item.publishedfileid, false)
+          this.files[category].push(file.item)
         }
       }catch(error) {
         this.error = error.message

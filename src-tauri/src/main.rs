@@ -322,7 +322,7 @@ fn main() {
         }
       }
     };
-    let logger = logger::Logger::new(settings.gamedir.join("downloader.log"));
+    let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
     if !settings.gamedir.exists() {
       logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.gamedir.to_string_lossy()));
       std::process::exit(1);
