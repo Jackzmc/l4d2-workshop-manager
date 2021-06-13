@@ -4,7 +4,7 @@
   <br>
   <div id="app">
     <div class="columns is-gapless">
-      <div class="column is-3" >
+      <div class="column is-3 panel-container" >
         <nav class="panel is-info" style="height:650px">
           <p class="panel-heading not-rounded">
             Items
@@ -36,8 +36,13 @@
         </nav>
         <p class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
       </div>
-      <div class="column mt-3">
-        <component :is="section.component" :items="items" @refreshItems="getItems" v-bind="section.props" />
+      <div class="column mt-3 section-component" id="section">
+        <component 
+          :is="section.component" 
+          :items="items"
+          v-bind="section.props"
+          @refreshItems="getItems"  
+        />
       </div>
     </div>
     
@@ -59,7 +64,6 @@ import Settings from '@/components/sections/Settings.vue'
 
 import TitleBar from '@/components/Titlebar.vue'
 
-import test from '@/components/sections/test.vue'
 
 import { formatBytes, formatDate } from '@/js/utils'
 
@@ -75,7 +79,6 @@ const SECTIONS = {
   ...MAIN_SECTIONS,
   AddNew,
   Settings,
-  test
 }
 
 export default {
@@ -126,13 +129,11 @@ export default {
       this.items = this.files[name.toLowerCase()]
       let sectionProps = {}
       if(name === "Settings") {
-        this.section.component = SECTIONS.Settings
         sectionProps = {
           settings: this.settings
         }
-      }else{
-        this.section.component = SECTIONS.test
       }
+      this.section.component = SECTIONS[name]
       this.section.id = name
       this.section.props = sectionProps
     },
@@ -198,6 +199,9 @@ export default {
           setTimeout(() => this.$delete(this.updates, payload.publishedfileid), 5000)
       }
     })
+    document.addEventListener("resize", () => {
+      document.getElementById("section").style.height = window.innerHeight 
+    })
   },
   async mounted() {
     await invoke('close_splashscreen')
@@ -231,7 +235,11 @@ export default {
   color: #F7F6F6
 }
 html, body {
-  /*background-color: #3298dc !important*/
   overflow-y: hidden !important;
 }
+.section-component {
+  height: 720px !important;
+  overflow: auto !important;
+}
+
 </style>

@@ -1,56 +1,46 @@
 <template>
-<div class="card" v-if="items.length > 0">
-    <header class="card-header" @click="active = !active">
-    <p class="card-header-title" style="cursor: pointer">
-        Updateable Items ({{items.length}})
-    </p>
-    <a class="card-header-icon" aria-label="more options">
-        <font-awesome-icon :icon="active ? 'angle-up' : 'angle-down'" size="lg" aria-hidden="true" />
-    </a>
-    </header>
-    <div class="card-content" v-if="active">
-    <div class="content">
-        <table class="table is-fullwidth ">
+<div>
+    <table class="table is-fullwidth">
         <thead>
             <tr>
-            <th style="width: 40px"></th>
-            <th>Item Name</th>
-            <th>File Size</th>
-            <th>Last Updated</th>
+                <th style="width: 40px"></th>
+                <th>Item Name</th>
+                <th>File Size</th>
+                <th>Last Updated</th>
             </tr>
         </thead>
         <tbody>
             <tr v-for="item in items" :key="item.publishedfileid" >
-            <td><input v-model="selected[item.publishedfileid]" class="checkbox is-large" type="checkbox" /></td>
-            <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
-                <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
-                    {{item.title || item.publishedfileid}}
-                </a>
-            </td>
-            <td>{{formatBytes(item.file_size)}}</td>
-            <td>{{formatDate(item.time_updated)}}</td>
+                <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
+                <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
+                    <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
+                        {{item.title || item.publishedfileid}}
+                    </a>
+                </td>
+                <td>{{formatBytes(item.file_size)}}</td>
+                <td>{{formatDate(item.time_updated)}}</td>
             </tr>
         </tbody>
         <tfoot>
             <tr>
-            <td></td>
-            <th>Total File Size: </th>
-            <th>{{formatBytes(total_bytes)}}</th>
-            <td></td>
+                <td></td>
+                <th>Total File Size: </th>
+                <th>{{formatBytes(total_bytes)}}</th>
+                <td></td>
             </tr>
         </tfoot>
-        </table>
-        <template v-if="hasItemSelected">
-            <hr>
-            <b>Action for selected</b><br>
+    </table>
+    <template v-if="hasItemSelected">
+        <hr>
+        <div class="container ml-5" v-if="hasItemSelected">
+            <b>Action for selected items</b><br>
             <div class="buttons">
                 <a class="button is-primary" @click="update">Update</a>
                 <a class="button is-success">Enable</a>
                 <a class="button is-danger">Disable</a>
             </div>
-        </template>
-    </div>
-    </div>
+        </div>
+    </template>
 </div>
 </template>
 
