@@ -4,8 +4,8 @@
   <br>
   <div id="app">
     <div class="columns is-gapless">
-      <div class="column is-3">
-        <nav class="panel is-info">
+      <div class="column is-3" >
+        <nav class="panel is-info" style="height:650px">
           <p class="panel-heading not-rounded">
             Items
           </p>
@@ -28,7 +28,7 @@
               <span>Settings</span>
             </span>
           </a>
-          <div class="panel-block" style="height:100%">
+          <div class="panel-block">
             <button class="button is-success is-outlined is-fullwidth">
               Add New
             </button>
@@ -36,7 +36,7 @@
         </nav>
         <p class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
       </div>
-      <div class="column">
+      <div class="column mt-3">
         <component :is="section.component" :items="items" @refreshItems="getItems" v-bind="section.props" />
       </div>
     </div>
@@ -230,7 +230,8 @@ export default {
   background-color: #1176dbce !important;
   color: #F7F6F6
 }
-/* html, body {
-  background-color: #3298dc !important
-} */
+html, body {
+  /*background-color: #3298dc !important*/
+  overflow-y: hidden !important;
+}
 </style>

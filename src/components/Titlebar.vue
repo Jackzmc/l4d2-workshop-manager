@@ -25,7 +25,7 @@
 }
 h1 { 
     color: #ffffff; 
-    font-weight: 800; 
+    font-weight: 450; 
 }
 .titlebar {
   height: 30px;

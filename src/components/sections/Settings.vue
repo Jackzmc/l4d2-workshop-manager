@@ -1,6 +1,6 @@
 <template>
 <div class="container">
-    <div class="box">
+    <div class="mt-2 box">
         <p>
             <b><u>Addons Folder</u></b> {{settings.gamedir}}
             <a class="button is-small is-info is-inline is-pulled-right">Update</a>
