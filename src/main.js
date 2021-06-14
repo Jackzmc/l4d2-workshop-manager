@@ -2,9 +2,10 @@ import Vue from 'vue'
 import App from './App.vue'
 import '@/assets/main.scss'
 
-import { Checkbox } from 'buefy'
+import { Checkbox, Button } from 'buefy'
 import 'buefy/dist/buefy.css'
 Vue.use(Checkbox)
+Vue.use(Button)
 
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faAngleDown, faAngleUp, faCog, faList, faWindowMinimize, faTimes, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'

@@ -20,7 +20,7 @@
               <span>{{key}} ({{files[key.toLowerCase()].length}})</span>
             </span>
           </a>
-          <a class="panel-block" @click="openSection('Settings')">
+          <a :class="['panel-block', {'panel-active': section.id == 'Settings'}]" @click="openSection('Settings')">
             <span class="icon-text">
               <span class="icon">
                 <font-awesome-icon icon="cog" aria-hidden="true" />
@@ -33,21 +33,23 @@
               Add New
             </button>
           </div>
-          <div class="panel-block" @click="getItems" v-if="!loading">
-            <button class="button is-info is-outlined is-fullwidth">
+          <div class="panel-block" @click="getItems">
+            <b-button class="button is-info is-outlined is-fullwidth" :disabled="loading" :loading="loading">
               Refresh
-            </button>
+            </b-button>
           </div>
         </nav>
         <p class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
       </div>
       <div class="column mt-3 section-component" id="section">
         <component 
+          v-if="section.component"
           :is="section.component" 
           :items="items"
           v-bind="section.props"
           @refreshItems="getItems"  
         />
+        <p v-else class="title is-4 has-text-centered mt-5">Select an item on the left to begin</p>
         <br><br>
       </div>
     </div>
@@ -84,7 +86,7 @@ const MAIN_SECTIONS = {
 const SECTIONS = {
   ...MAIN_SECTIONS,
   AddNew,
-  Settings,
+  Settings
 }
 
 export default {

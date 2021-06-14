@@ -1,6 +1,6 @@
 <template>
 <div>
-    <table class="table is-fullwidth">
+    <table class="table is-fullwidth" style="height:500px">
     <thead>
         <tr>
         <th style="width: 40px"></th>

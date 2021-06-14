@@ -35,7 +35,7 @@
         <div class="container ml-5" v-if="hasItemSelected">
             <b>Action for selected items</b><br>
             <div class="buttons">
-                <a class="button is-info" @click="update">Update</a>
+                <b-button class="button is-info" @click="update" :disabled="updating" :loading="updating">Update</b-button>
                 <a class="button is-success">Enable</a>
                 <a class="button is-danger">Disable</a>
             </div>
@@ -56,7 +56,8 @@ export default {
         return {
             active: false,
             selected: {},
-            updates: {}
+            updates: {},
+            updating: false
         }
     },
     computed: {

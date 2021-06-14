@@ -2,7 +2,7 @@
 <div>
     <p class="ml-5">
         <font-awesome-icon icon="exclamation-triangle" class="has-text-warning" />
-        These items do not include a publishedfileid, therefore cannot be managed by this tool.
+        These items do not include a publishedfileid, therefore cannot be managed by this tool. Add an id to the filename and refresh.
     </p>
     <table class="table is-fullwidth">
         <thead>
