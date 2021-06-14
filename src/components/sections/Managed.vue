@@ -3,10 +3,12 @@
     <table class="table is-fullwidth" style="height:500px">
     <thead>
         <tr>
-        <th style="width: 40px"></th>
-        <th>Item Name</th>
-        <th>File Size</th>
-        <th>Last Updated</th>
+            <th style="width: 40px">
+                <b-checkbox @input="onSelectAll" />
+            </th>
+            <th>Item Name</th>
+            <th>File Size</th>
+            <th>Last Updated</th>
         </tr>
     </thead>
     <tbody>
@@ -78,7 +80,12 @@ export default {
         toggle() {
             if(this.items.length == 0) return this.active = false
             this.active = !this.active
-        }
+        },
+        onSelectAll(state) {
+            for(const item of this.items) {
+                this.$set(this.selected, item.publishedfileid, state)
+            }
+        } 
     }
 }
 </script>

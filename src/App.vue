@@ -17,7 +17,7 @@
               <span class="icon">
                 <font-awesome-icon icon="list" aria-hidden="true" />
               </span>
-              <span>{{key}} ({{files[key.toLowerCase()].length}})</span>
+              <span>{{key}} <span class="tag is-info is-light">{{files[key.toLowerCase()].length}}</span></span>
             </span>
           </a>
           <a :class="['panel-block', {'panel-active': section.id == 'Settings'}]" @click="openSection('Settings')">
@@ -115,9 +115,8 @@ export default {
       section: {
         component: null,
         props: null,
-        ida: null
+        id: null
       },
-      items: null
     }
   },
   computed: {
@@ -128,13 +127,12 @@ export default {
       }
       return count
     },
+    items() {
+      return this.section.id ? this.files[this.section.id.toLowerCase()] : []
+    }
   },
   methods: {
-    debug(a,b) {
-      console.log(a,b,a==b)
-    },
     openSection(name) {
-      this.items = this.files[name.toLowerCase()]
       let sectionProps = {}
       if(name === "Settings") {
         sectionProps = {

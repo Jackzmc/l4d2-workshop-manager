@@ -3,7 +3,9 @@
     <table class="table is-fullwidth">
         <thead>
             <tr>
-                <th style="width: 40px"></th>
+                <th style="width: 40px">
+                    <b-checkbox @input="onSelectAll" />
+                </th>
                 <th>Item Name</th>
                 <th>File Size</th>
                 <th>Last Updated</th>
@@ -12,7 +14,11 @@
         <tbody>
             <tr v-for="item in items" :key="item.publishedfileid" >
                 <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
-                <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">{{item.title || item.publishedfileid}}</td>
+                <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
+                    <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
+                        {{item.title || item.publishedfileid}}
+                    </a>
+                </td>
                 <td>{{formatBytes(item.file_size)}}</td>
                 <td>{{formatDate(item.time_updated)}}</td>
             </tr>
@@ -72,7 +78,12 @@ export default {
         toggle() {
             if(this.items.length == 0) return this.active = false
             this.active = !this.active
-        }
+        },
+        onSelectAll(state) {
+            for(const item of this.items) {
+                this.$set(this.selected, item.publishedfileid, state)
+            }
+        } 
     },
 }
 </script>

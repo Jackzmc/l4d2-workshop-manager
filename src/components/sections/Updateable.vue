@@ -3,7 +3,9 @@
     <table class="table is-fullwidth">
         <thead>
             <tr>
-                <th style="width: 40px"></th>
+                <th style="width: 40px">
+                    <b-checkbox @input="onSelectAll" />
+                </th>
                 <th>Item Name</th>
                 <th>File Size</th>
                 <th>Last Updated</th>
@@ -110,6 +112,11 @@ export default {
                 }
             }, 1000)
         },
+        onSelectAll(state) {
+            for(const item of this.items) {
+                this.$set(this.selected, item.publishedfileid, state)
+            }
+        }  
     },
     async created() {
         
