@@ -37,7 +37,13 @@
         <div class="container ml-5" v-if="hasItemSelected">
             <b>Action for selected items</b><br>
             <div class="buttons">
-                <a class="button is-primary">Import Addons</a>
+                <b-button type="is-info" 
+                    @click="importAddons"
+                    :disabled="loading"
+                    :loading="loading"
+                >
+                    Import Addons
+                </b-button>
             </div>
         </div>
     </template>
@@ -53,7 +59,8 @@ export default {
     data() {
         return {
             active: false,
-            selected: {}
+            selected: {},
+            loading: false
         }
     },
     computed: {
@@ -82,17 +89,19 @@ export default {
             this.active = !this.active
         },
         importAddons() {
-            let items = this.items.filter(item => this.selected[item.publishedfileid])
+            this.loading = true
+            let items = this.items.filter(item => this.selected[item.publishedfileid] && item)
             let running = 0;
             let timer = setInterval(async() => {
                 if(items.length == 0 && running == 0) {
                     this.$emit('refreshItems')
-                    this.updating = false
+                    this.loading = false
                     return clearInterval(timer)
                 }else if(running < 6) {
                     let item = items.shift();
                     running++
-                    await invoke("import_addon", { item, is_workshop: false })
+                    console.log('item', item)
+                    await invoke("import_addon", { item, isWorkshop: false })
                     running--
                 }
             }, 1000)

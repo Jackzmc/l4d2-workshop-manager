@@ -37,7 +37,13 @@
         <div class="container ml-5" v-if="hasItemSelected">
             <b>Action for selected items</b><br>
             <div class="buttons">
-                <a class="button is-primary">Import Addons</a>
+                <b-button type="is-info" 
+                    @click="importAddons"
+                    :disabled="loading"
+                    :loading="loading"
+                >
+                    Import Addons
+                </b-button>
             </div>
         </div>
     </template>
@@ -46,12 +52,15 @@
 
 <script>
 import { formatBytes, formatDate } from '@/js/utils'
+import { invoke } from '@tauri-apps/api/tauri'
+
 export default {
     props: ['items'],
     data() {
         return {
             active: false,
-            selected: {}
+            selected: {},
+            loading: false
         }
     },
     computed: {
@@ -78,6 +87,24 @@ export default {
         toggle() {
             if(this.items.length == 0) return this.active = false
             this.active = !this.active
+        },
+        importAddons() {
+            this.loading = true
+            let items = this.items.filter(item => this.selected[item.publishedfileid] && item)
+            let running = 0;
+            let timer = setInterval(async() => {
+                if(items.length == 0 && running == 0) {
+                    this.$emit('refreshItems')
+                    this.loading = false
+                    return clearInterval(timer)
+                }else if(running < 6) {
+                    let item = items.shift();
+                    running++
+                    console.log('item', item)
+                    await invoke("import_addon", { item, isWorkshop: true })
+                    running--
+                }
+            }, 1000)
         },
         onSelectAll(state) {
             for(const item of this.items) {

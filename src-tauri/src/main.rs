@@ -214,6 +214,12 @@ fn import_addon(
   let filename = format!("{}.vpk", &item.publishedfileid);
   let download = config::DownloadEntry::from_item(&item);
 
+  state.logger.debug("import_addon", &format!("Moving {} from {} to {}", 
+    filename, 
+    src_folder.to_string_lossy(), 
+    dest_folder.to_string_lossy()
+  ));
+
   if is_workshop {
     if let Err(err) = std::fs::rename(src_folder.join(&filename), dest_folder.join(&filename)) {
       state.logger.error("import_addon", &format!("Moving import for {} error: {}", item.publishedfileid, err));
