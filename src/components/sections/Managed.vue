@@ -30,14 +30,16 @@
         </tr>
     </tfoot>
     </table>
-    <hr>
-    <div class="container ml-5" v-if="hasItemSelected">
-        <b>Action for selected items</b><br>
-        <div class="buttons">
-            <a class="button is-success">Enable</a>
-            <a class="button is-danger">Disable</a>
+    <template v-if="hasItemSelected">
+        <hr>
+        <div class="container ml-5" v-if="hasItemSelected">
+            <b>Action for selected items</b><br>
+            <div class="buttons">
+                <a class="button is-success">Enable</a>
+                <a class="button is-danger">Disable</a>
+            </div>
         </div>
-    </div>
+    </template>
 </div>
 </template>
 

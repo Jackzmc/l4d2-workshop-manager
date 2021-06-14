@@ -30,6 +30,15 @@
             </tr>
         </tfoot>
     </table>
+    <template v-if="hasItemSelected">
+        <hr>
+        <div class="container ml-5" v-if="hasItemSelected">
+            <b>Action for selected items</b><br>
+            <div class="buttons">
+                <a class="button is-primary">Import Addons</a>
+            </div>
+        </div>
+    </template>
 </div>
 </template>
 

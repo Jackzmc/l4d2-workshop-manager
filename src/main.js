@@ -7,11 +7,11 @@ import 'buefy/dist/buefy.css'
 Vue.use(Checkbox)
 
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faAngleDown, faAngleUp, faCog, faList, faWindowMinimize, faTimes } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faCog, faList, faWindowMinimize, faTimes, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons'
 import { FontAwesomeIcon} from '@fortawesome/vue-fontawesome'
 
-library.add(faAngleDown, faAngleUp, faCog, faList, faWindowMinimize, faWindowMaximize, faTimes)
+library.add(faAngleDown, faAngleUp, faCog, faList, faWindowMinimize, faWindowMaximize, faTimes, faExclamationTriangle)
 Vue.component('font-awesome-icon', FontAwesomeIcon)
 
 Vue.config.productionTip = false

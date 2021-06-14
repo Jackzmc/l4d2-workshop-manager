@@ -33,6 +33,11 @@
               Add New
             </button>
           </div>
+          <div class="panel-block" @click="getItems" v-if="!loading">
+            <button class="button is-info is-outlined is-fullwidth">
+              Refresh
+            </button>
+          </div>
         </nav>
         <p class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
       </div>
@@ -43,6 +48,7 @@
           v-bind="section.props"
           @refreshItems="getItems"  
         />
+        <br><br>
       </div>
     </div>
     

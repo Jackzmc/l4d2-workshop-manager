@@ -35,7 +35,7 @@
         <div class="container ml-5" v-if="hasItemSelected">
             <b>Action for selected items</b><br>
             <div class="buttons">
-                <a class="button is-primary" @click="update">Update</a>
+                <a class="button is-info" @click="update">Update</a>
                 <a class="button is-success">Enable</a>
                 <a class="button is-danger">Disable</a>
             </div>

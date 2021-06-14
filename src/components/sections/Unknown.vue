@@ -1,10 +1,12 @@
 <template>
 <div>
-    These items do not include a publishedfileid, therefore cannot be managed by this tool.
+    <p class="ml-5">
+        <font-awesome-icon icon="exclamation-triangle" class="has-text-warning" />
+        These items do not include a publishedfileid, therefore cannot be managed by this tool.
+    </p>
     <table class="table is-fullwidth">
         <thead>
             <tr>
-                <th style="width: 40px"></th>
                 <th>Item Name</th>
                 <th>File Size</th>
                 <th>Last Updated</th>
@@ -12,7 +14,6 @@
         </thead>
         <tbody>
             <tr v-for="item in items" :key="item.publishedfileid" >
-                <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
                 <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">{{item.title || item.publishedfileid}}.vpk</td>
                 <td>{{formatBytes(item.file_size)}}</td>
                 <td>{{formatDate(item.time_updated)}}</td>
@@ -27,6 +28,7 @@
             </tr>
         </tfoot>
     </table>
+    <hr>
 </div>
 </template>
 
