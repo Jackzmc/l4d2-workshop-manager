@@ -55,10 +55,10 @@ impl Logger {
     pub fn logp(&self, level: LogLevel, prefix: &'static str, msg: &str) {
         let now: DateTime<Local> = Local::now();
         let timestamp = now.format("%F %H:%M:%S %Z");
-        writeln!(&self.file, "[{}] [{}/{:?}] {}", 
+        writeln!(&self.file, "[{}] [{:?}/{}] {}", 
             timestamp,
-            prefix,
             level,
+            prefix,
             msg
         ).ok();
     }

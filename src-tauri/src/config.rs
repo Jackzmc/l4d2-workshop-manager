@@ -9,7 +9,7 @@ pub fn get_appdir() -> PathBuf {
     return folder;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DownloadEntry {
     pub title: String,
     pub publishedfileid: String,

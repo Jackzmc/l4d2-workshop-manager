@@ -217,6 +217,18 @@ fn close_splashscreen(
 }
 
 #[tauri::command]
+fn get_install_info(
+  state: tauri::State<'_, Data>,
+  id: String
+) -> Option<config::DownloadEntry> {
+  match state.downloads.lock().unwrap().get_download(&id) {
+    Some(download) => Some(download.clone()),
+    None => None
+  }
+
+}
+
+#[tauri::command]
 fn import_addon(
   state: tauri::State<'_, Data>,
   item: steam_workshop_api::WorkshopItem,
@@ -369,6 +381,7 @@ fn main() {
     save_settings,
     close_splashscreen,
     import_addon,
+    get_install_info,
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");

@@ -7,14 +7,17 @@
                 <div class="field">
                     <label class="label">Search an item</label>
                     <div class="field has-addons ">
-                        <p class="control has-icons-left is-expanded">
-                            <input v-model="query" required class="input" type="text" placeholder="Find an item">
-                            <span class="icon is-small is-left">
-                                <font-awesome-icon icon="search" aria-hidden="true" />
-                            </span>
-                        </p>
+                        <b-input 
+                            :loading="searching" 
+                            v-model="query" 
+                            icon="search"
+                            expanded
+                            required 
+                            native-type="text" 
+                            placeholder="Find an item" 
+                        />
                         <p class="control">
-                            <input type="submit" class="button is-info" :disabled="!query || query.length == 0" value="Search" />
+                            <input type="submit" class="button is-info" :disabled="searching || !query || query.length == 0" value="Search" />
                         </p>
                     </div>
                 </div>
@@ -26,13 +29,18 @@
                     <label class="label">Enter a link</label>
                     <div class="field has-addons">
                         <p class="control has-icons-left">
-                            <input required v-model="url" class="input" type="text" placeholder="Enter an url">
-                            <span class="icon is-small is-left">
-                                <font-awesome-icon icon="link" aria-hidden="true" />
-                            </span>
+                           <b-input 
+                                :loading="fetching" 
+                                v-model="id" 
+                                icon="link"
+                                expanded
+                                required 
+                                native-type="text" 
+                                placeholder="Enter an url" 
+                            />
                         </p>
                         <p class="control">
-                            <input type="submit" class="button is-info" :disabled="!url || url.length == 0" value="Load">
+                            <input type="submit" class="button is-info" :disabled="fetching || !id || id.length == 0" value="Load" />
                         </p>
                     </div>
                 </div>
@@ -59,7 +67,8 @@
                     <span class="tag is-link">{{formatBytes(item.file_size)}}</span>
                 </div>
                 <div class="buttons">
-                    <b-button type="is-info">Install Addon</b-button>
+                    <b-button v-if="installState < 2" type="is-info" @click="install" :loading="installState == 1">Install Addon</b-button>
+                    <p class="has-text-success" v-if="installState">Installed</p>
                     <a class="button is-secondary" target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
                         Open Page
                     </a>
@@ -101,55 +110,140 @@ import bbobHTML from '@bbob/html'
 import presetHTML5 from '@bbob/preset-html5'
 
 import { formatBytes, formatDate } from '@/js/utils'
+import { invoke } from '@tauri-apps/api/tauri'
+
 
 export default {
     data() {
         return {
-            active: false,
             query: null,
-            url: null,
+            id: null,
             searchResults: null,
-            item: null
+            item: null,
+            installState: 0, //0->Inactive, 1->Installing, 2->Installed
+            fetching: false,
+            searching: false
         }
     },
     computed: {
         descriptionHTML() {
             if(!this.item) return null
-            return bbobHTML(this.item.file_description, presetHTML5())
+            return bbobHTML(this.item.file_description || this.item.description, presetHTML5())
         }
     },
     methods: {
         formatBytes, 
         formatDate,
-        toggle() {
-            this.active = !this.active
-        },
         search() {
+            this.item = null
+            this.searching = true
             fetch(`https://jackz.me/l4d2/scripts/search_public.php?page=1&numperpage=20&search_text=${this.query}&appid=550&return_details=1`)
             .then(r => r.json())
             .then(json => {
-                this.searchResults = json.response.publishedfiledetails
+                if(json.response.total > 0) {
+                    this.searchResults = json.response.publishedfiledetails
+                }else{
+                    this.$buefy.snackbar.open({
+                        duration: 5000,
+                        message: 'Could not find any item matching your query',
+                        type: 'is-warning',
+                        position: 'is-bottom-left',
+                        queue: false,
+                    })
+                }
             })
+            .catch(err => {
+                this.$buefy.snackbar.open({
+                    duration: 5000,
+                    message: '<b>Search failed: </b>' + err.message,
+                    type: 'is-danger',
+                    position: 'is-bottom-left',
+                    actionText: 'Retry',
+                    queue: false,
+                    onAction: () => {
+                        this.search()
+                    }
+                })
+            })
+            .finally(() => this.searching = false)
         },
         fetchItem() {
-            console.log(this.url)
+            this.fetching = true
+            const params = new URLSearchParams();
+            params.append("itemcount", 1)
+            params.append("publishedfileids[0]", this.id)
+
+            fetch(`https://proxy.jackz.me/api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1`, {
+                method: 'POST',
+                body: params
+            })
+            .then(r => r.json())
+            .then(json => {
+                if(json.response.resultcount > 0) {
+                    this.select(json.response.publishedfiledetails[0])
+                    this.id = null
+                }else{
+                    this.$buefy.snackbar.open({
+                        duration: 5000,
+                        message: 'Could not find that item',
+                        type: 'is-warning',
+                        position: 'is-bottom-left',
+                        queue: false,
+                    })
+                }
+            })
+            .catch(err => {
+                this.$buefy.snackbar.open({
+                    duration: 5000,
+                    message: '<b>Fetched failed: </b>' + err.message,
+                    type: 'is-danger',
+                    position: 'is-bottom-left',
+                    actionText: 'Retry',
+                    queue: false,
+                    onAction: () => {
+                        this.fetchItem()
+                    }
+                })
+            })
+            .finally(() => this.fetching = false)
         },
-        select(item) {
+        async select(item) {
             this.item = item
+            const installInfo = await invoke("get_install_info", { id: item.publishedfileid.toString() })
+            console.log('got info', installInfo)
+            this.installState = installInfo ? 2 : 0
         },
         formatNumber(inp) {
             return inp.toLocaleString()
+        },
+        async install() {
+            this.installState = 1
+            try {
+                await invoke('download_addon', { item: this.item })
+                this.item = null
+            } catch(err) {
+                this.$buefy.dialog.alert({
+                    title: 'Install Failed',
+                    message: 'An error occurred while installing this addon:<br>' + err.message,
+                    type: 'is-danger',
+                    ariaRole: 'alertdialog',
+                    ariaModal: true
+                })
+                console.error('Installing failure: ', err)
+            }
+            this.installState = 0
         }
     },
     watch: {
-        url(url) {
+        id(url) {
+            if(!url) return
             const match = url.match(WORKSHOP_REGEX)
             if(match) {
-                this.url = match[2]
+                this.id = match[2]
             }else if(!isNaN(parseInt(url))) {
                 this.fetchItem()
             }else{
-                this.url = this.url.replace(/\D/g,'')
+                this.id = this.url.replace(/\D/g,'')
             }
         }
     }
