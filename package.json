@@ -1,7 +1,7 @@
 {
   "name": "l4d2-workshop-downloader-gui",
   "version": "0.1.0",
-  "build": 6,
+  "build": 10,
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -11,6 +11,9 @@
     "tauri:serve": "vue-cli-service tauri:serve"
   },
   "dependencies": {
+    "@bbob/core": "^2.7.0",
+    "@bbob/html": "^2.7.0",
+    "@bbob/preset-html5": "^2.7.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-regular-svg-icons": "^5.15.3",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",

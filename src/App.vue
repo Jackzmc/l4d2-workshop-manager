@@ -28,13 +28,16 @@
               <span>Settings</span>
             </span>
           </a>
-          <div class="panel-block">
-            <button class="button is-success is-outlined is-fullwidth">
-              Add New
-            </button>
-          </div>
+          <a :class="['panel-block', {'panel-active': section.id == 'AddNew'}]" @click="openSection('AddNew')">
+            <span class="icon-text">
+              <span class="icon has-text-success">
+                <font-awesome-icon icon="plus" aria-hidden="true" />
+              </span>
+              <span>Add New</span>
+            </span>
+          </a>
           <div class="panel-block" @click="getItems">
-            <b-button class="button is-info is-outlined is-fullwidth" :disabled="loading" :loading="loading">
+            <b-button type="is-info" outlined expanded :disabled="loading" :loading="loading">
               Refresh
             </b-button>
           </div>
@@ -231,6 +234,9 @@ export default {
 .panel:not(:last-child) {
   margin-bottom: 0 !important;
 }
+.panel {
+  background-color: white
+}
 .panel-active {
   background-color: #1176dbce;
   color: #F7F6F6 !important;
@@ -242,6 +248,7 @@ export default {
 }
 html, body {
   overflow-y: hidden !important;
+  background-color: rgba(255, 255, 255, 0.667);
 }
 .section-component {
   height: 720px !important;

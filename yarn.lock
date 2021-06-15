@@ -903,6 +903,46 @@
     "@babel/helper-validator-identifier" "^7.14.0"
     to-fast-properties "^2.0.0"
 
+"@bbob/core@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@bbob/core/-/core-2.7.0.tgz#5ed7ee69c4b715907a083ca73925b0ef4c3f656e"
+  integrity sha512-ITxArwasC786ED9Ij4Fhgb/+CTiTS6yo8pvo+z4A5Oqq8jLjmp9d5R320nNbjM44RQJ6EqjX/1DgOZ2D8r7wQg==
+  dependencies:
+    "@bbob/parser" "^2.7.0"
+
+"@bbob/html@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@bbob/html/-/html-2.7.0.tgz#30c2bd118cb36ea185cc7f922fbb33cd92e06bf4"
+  integrity sha512-afdNNQcb4t+7WUvyreZoQju6tzPQv5d9UARNQ8F3fxKycJLQNlnOd84Ml5rnNXnkztI5dzhquv6X2Y/0YfW37g==
+  dependencies:
+    "@bbob/core" "^2.7.0"
+    "@bbob/plugin-helper" "^2.7.0"
+
+"@bbob/parser@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@bbob/parser/-/parser-2.7.0.tgz#ed56a1169d9f69e6defe4512ca65cd004a9a6dcc"
+  integrity sha512-lTs7rcz6BmS8PI98jQJrr/iq+BeZIuXAmQNAgSQJxTxalD1wln90g5Vf/keYppONg+cw9JKE8klFYVUhgd2C4Q==
+  dependencies:
+    "@bbob/plugin-helper" "^2.7.0"
+
+"@bbob/plugin-helper@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@bbob/plugin-helper/-/plugin-helper-2.7.0.tgz#e24f4a103a2b4daa71674d751af766c791d1d570"
+  integrity sha512-t5Uj2JxTOQ1Lmsx2RoXpNTsavQDz3sknsQfspsSSuDeWl9Ue+p0afQJ81El6NfsNKb45X5lNjZ9hxZIQJnin1g==
+
+"@bbob/preset-html5@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@bbob/preset-html5/-/preset-html5-2.7.0.tgz#175981726dad038f0fb5a82d490b7287eba1abdb"
+  integrity sha512-qDgHtjLrkgnb9b8byReWtdab0GVZoUc9k6TWg5HYBsCHliDLcUAsMgKEu0QAklHNlc1ez1T2hil2k3DAwxv1Rw==
+  dependencies:
+    "@bbob/plugin-helper" "^2.7.0"
+    "@bbob/preset" "^2.7.0"
+
+"@bbob/preset@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@bbob/preset/-/preset-2.7.0.tgz#52a97a02e2ec88cc784a2187ed239820cf6b0fc8"
+  integrity sha512-zkVotYkqGgcmX3O1nMiHwukbun96Hv6s73pGN+PxTS2mjubAkY1Z2f0ZgTCgBairFu/vnfXVqmxo/yvpGQG13A==
+
 "@electron/get@^1.0.1":
   version "1.12.4"
   resolved "https://registry.yarnpkg.com/@electron/get/-/get-1.12.4.tgz#a5971113fc1bf8fa12a8789dc20152a7359f06ab"
