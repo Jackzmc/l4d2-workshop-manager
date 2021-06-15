@@ -1,6 +1,10 @@
 <template>
 <div class="container">
-    <div class="mt-2 box">
+    <div class="box" v-if="hasChanged">
+        <p>You have unsaved changes</p>
+        <b-button type="is-success">Save</b-button>
+    </div>
+    <div class="mx-5 mt-4 box">
         <div class="field">
             <div class="field is-horizontal">
                 <div class="field-label is-normal">
@@ -11,7 +15,8 @@
                         <p class="control">
                             <input class="input" style="width:600px" type="text" :value="settings.gamedir">
                         </p>
-                        <p class="control">
+                        <!-- TODO: Implement prompting for gamedir -->
+                        <p class="control" >
                             <a class="button is-info">
                             Update
                             </a>
@@ -21,12 +26,58 @@
             </div>
         </div>
     </div>
+    <div class="mx-5 mt-4 box">
+        <div class="field">
+            <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                    <label class="label">Telemetry</label>
+                </div>
+                <div class="field-body">
+                    <div class="field has-addons has-addons-centered">
+                        <b-switch v-model="changed.telemetry">
+                            {{ changed.telemetry ? 'Enabled' : 'Disabled' }}
+                        </b-switch>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 </template>
 
 <script>
+
+import { invoke } from '@tauri-apps/api/tauri'
+
 export default {
-    props: ['settings']
+    props: ['settings'],
+    data() {
+        return {
+            changed: {
+                telemetry: null
+            }
+        }
+    },
+    computed: {
+        hasChanged() {
+            for(const item in this.settings) {
+                if(this.settings[item] != this.changed[item]) return true
+            }
+            return false
+        }
+    },
+    methods: {
+        async save() {
+            try {
+                await invoke('save_settings', { changed: this.changed })
+            } catch(err) {
+                console.log(err)
+            }
+        }
+    },
+    created() {
+        this.changed = Object.assign({}, this.settings)
+    }
 }
 </script>
 

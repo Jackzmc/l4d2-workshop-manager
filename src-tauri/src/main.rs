@@ -192,6 +192,20 @@ fn get_settings(state: tauri::State<Data>) -> config::Settings {
 }
 
 #[tauri::command]
+fn save_settings(state: tauri::State<Data>, changed: config::Settings) -> Result<(), String> {
+  match config::Settings::load() {
+    Ok(mut settings) => {
+      settings.telemetry = changed.telemetry;
+      Ok(())
+    },
+    Err(err) => {
+      state.logger.error("save_settings", &format!("Could not load settings: {}", err.to_string()));
+      return Err(err.to_string());
+    }
+  }
+}
+
+#[tauri::command]
 fn close_splashscreen(
   splashscreen: State<SplashscreenWindow>,
   main: State<MainWindow>,
@@ -352,8 +366,9 @@ fn main() {
     get_items, 
     download_addon,
     get_settings,
+    save_settings,
     close_splashscreen,
-    import_addon
+    import_addon,
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
