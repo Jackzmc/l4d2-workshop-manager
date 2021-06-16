@@ -60,8 +60,8 @@
             <b>Action for selected items</b><br>
             <div class="buttons">
                 <b-button class="button is-info" @click="update" :disabled="updating" :loading="updating">Update</b-button>
-                <a class="button is-success">Enable</a>
-                <a class="button is-danger">Disable</a>
+                <!-- <a class="button is-success">Enable</a>
+                <a class="button is-danger">Disable</a> -->
             </div>
         </div>
     </template>

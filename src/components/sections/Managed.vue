@@ -32,7 +32,7 @@
         </tr>
     </tfoot>
     </table>
-    <template v-if="hasItemSelected">
+    <!-- <template v-if="hasItemSelected">
         <hr>
         <div class="container ml-5" v-if="hasItemSelected">
             <b>Action for selected items</b><br>
@@ -41,7 +41,7 @@
                 <a class="button is-danger">Disable</a>
             </div>
         </div>
-    </template>
+    </template> -->
 </div>
 </template>
 
