@@ -91,11 +91,20 @@ export default {
         importAddons() {
             this.loading = true
             let items = this.items.filter(item => this.selected[item.publishedfileid] && item)
+            const items_copy = [...items]
             let running = 0;
             let timer = setInterval(async() => {
                 if(items.length == 0 && running == 0) {
                     this.$emit('refreshItems')
                     this.loading = false
+                    this.$buefy.dialog.alert({
+                        title: 'Addons Imported',
+                        message: `Successfully imported ${items_copy.length} items. Please unsubscribe to them on the steam workshop to prevent duplicates:`
+                            + items_copy.map(item => `<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=${item.publishedfileid}">${item.title}</a>`).join("<br"),
+                        type: 'is-success',
+                        ariaRole: 'alertdialog',
+                        ariaModal: true
+                    })
                     return clearInterval(timer)
                 }else if(running < 6) {
                     let item = items.shift();
