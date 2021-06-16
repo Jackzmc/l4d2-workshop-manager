@@ -367,6 +367,11 @@ fn main() {
         config::Downloads::new()
       }
     };
+
+    if settings.telemetry {
+      send_telemetry(&logger);
+    }
+
     app.manage(Data {
       settings,
       downloads: Arc::new(Mutex::new(downloads)),
@@ -407,5 +412,19 @@ fn prompt_game_dir() -> PathBuf {
   } else {
     eprintln!("Could not open file dialog");
     std::process::exit(1);
+  }
+}
+
+fn send_telemetry(logger: &logger::Logger) {
+  let client = reqwest::blocking::Client::new();
+  if let Err(err) = client
+    .get("https://telemetry.jackz.me/l4d2-workshop-downloader/track.php")
+    .query(&[
+      ("v", env!("CARGO_PKG_VERSION")),
+      ("os", std::env::consts::OS),
+      ("arch", std::env::consts::ARCH),
+    ])
+    .send() {
+      logger.warn("send_telemetry", &format!("Failed to send telemtry: {}", err.to_string()));
   }
 }

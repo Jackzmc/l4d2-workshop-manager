@@ -1,6 +1,8 @@
 <template>
 <div>
-    <table class="table is-fullwidth" style="height:500px">
+    <b-tabs type="is-boxed">
+        <b-tab-item label="Enabled">
+            <table class="table is-fullwidth" style="height:500px">
     <thead>
         <tr>
             <th style="width: 40px">
@@ -42,6 +44,13 @@
             </div>
         </div>
     </template>
+        </b-tab-item>
+
+        <b-tab-item label="Disabled">
+            
+        </b-tab-item>
+    </b-tabs>
+    
 </div>
 </template>
 
