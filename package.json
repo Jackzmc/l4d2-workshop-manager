@@ -1,7 +1,7 @@
 {
   "name": "l4d2-workshop-downloader-gui",
   "version": "0.1.0",
-  "build": 14,
+  "build": 15,
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",

@@ -5,9 +5,9 @@
 
 mod config;
 mod logger;
+mod util;
 
 use steam_workshop_api::{Workshop, WorkshopItem};
-use std::path::PathBuf;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State, Window};
@@ -38,9 +38,14 @@ enum ItemType {
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 enum File {
+  Managed {
+    item: WorkshopItem,
+    item_type: ItemType,
+    enabled: bool
+  },
   Item { 
     item: WorkshopItem,
-    item_type: ItemType
+    item_type: ItemType,
   },
   Unknown {
     item: UnknownFile,
@@ -55,6 +60,13 @@ struct UnknownFile {
   time_updated: Option<u64>,
 }
 
+
+
+/*TODO: Refactor the check of:
+1. Valid File name
+2. Has ID or Unknown timestamp
+into a method to be reused for disable check
+*/
 #[tauri::command]
 fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   let regex = Regex::new(r"([0-9]{7,})").unwrap();
@@ -140,6 +152,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
       })
     }
   }
+
   
   for unknown in unknown_ids {
     files.push(File::Unknown {
@@ -150,27 +163,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   Ok(files)
 }
 
-fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
-  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.join("workshop").as_path()) {
-    Ok(fileids) => fileids,
-    Err(err) => {
-      state.logger.error("get_workshop_items", &format!("Failed to get workshop items: {}", err));
-      return Err(err)
-    }
-  };
 
-  if fileids.is_empty() {
-    return Ok(Vec::new());
-  }
-
-  match Workshop::new(None).get_published_file_details(&fileids) {
-    Ok(details) => return Ok(details),
-    Err(err) => { 
-      state.logger.error("get_workshop_items", &format!("Failed to get workshop item details: {}", err));
-      return Err(err.to_string())
-    }
-  };
-}
 
 
 #[derive(Serialize, Deserialize)]
@@ -349,7 +342,7 @@ fn main() {
     let settings = match config::Settings::load() {
       Ok(config) => config,
       Err(_e) => {
-        let gamedir = prompt_game_dir();
+        let gamedir = util::prompt_game_dir();
         let mut settings = config::Settings::new(gamedir);
         if let Err(err) = settings.save() {
           logger.warn("setup", &format!("Could not save settings: {}", err));
@@ -369,7 +362,7 @@ fn main() {
     };
 
     if settings.telemetry {
-      send_telemetry(&logger, downloads.size());
+      util::send_telemetry(&logger, downloads.size());
     }
 
     app.manage(Data {
@@ -392,51 +385,25 @@ fn main() {
   .expect("error while running tauri application");
 }
 
-fn prompt_game_dir() -> PathBuf {
-  if let Some(file_path) = tinyfiledialogs::open_file_dialog(
-    "Choose where Left 4 Dead 2 is installed", 
-    "",
-    Some((&["left4dead2.exe"], "left4dead2.exe"))
-  ) {
-    let path = PathBuf::from(file_path)
-    .parent()
-    .unwrap()
-    .join("left4dead2")
-    .join("addons");
-    if !path.exists() {
-      std::fs::create_dir_all(&path).ok();
-      println!("Warn: left4dead2/addons folder missing, creating..");
-      return prompt_game_dir();
-    }
-    return path
-  } else {
-    eprintln!("Could not open file dialog");
-    std::process::exit(1);
-  }
-}
 
-fn send_telemetry(logger: &logger::Logger, downloads: usize) {
-  match reqwest::blocking::Client::builder()
-    .timeout(std::time::Duration::from_secs(3))
-    .build()
-  {
-    Ok(client) => {
-      if let Err(err) = client
-        .get("https://telemetry.jackz.me/track.php")
-        .query(&[
-          ("item", "l4d2-workshop-downloader"),
-          ("v", env!("CARGO_PKG_VERSION")),
-          ("os", std::env::consts::OS),
-          ("arch", std::env::consts::ARCH),
-          ("downloaded", &downloads.to_string())
-        ])
-        .send() {
-          logger.warn("send_telemetry", &format!("Failed to send telemetry: {}", err.to_string()));
+fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
+  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.join("workshop").as_path()) {
+      Ok(fileids) => fileids,
+      Err(err) => {
+      state.logger.error("get_workshop_items", &format!("Failed to get workshop items: {}", err));
+      return Err(err)
       }
-    },
-    Err(err) => {
-      logger.warn("send_telemetry", &format!("Failed to setup sending telemetry: {}", err.to_string()));
-    }
+  };
+
+  if fileids.is_empty() {
+      return Ok(Vec::new());
   }
-  
+
+  match Workshop::new(None).get_published_file_details(&fileids) {
+      Ok(details) => return Ok(details),
+      Err(err) => { 
+      state.logger.error("get_workshop_items", &format!("Failed to get workshop item details: {}", err));
+      return Err(err.to_string())
+      }
+  };
 }
