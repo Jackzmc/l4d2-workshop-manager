@@ -416,15 +416,26 @@ fn prompt_game_dir() -> PathBuf {
 }
 
 fn send_telemetry(logger: &logger::Logger) {
-  let client = reqwest::blocking::Client::new();
-  if let Err(err) = client
-    .get("https://telemetry.jackz.me/l4d2-workshop-downloader/track.php")
-    .query(&[
-      ("v", env!("CARGO_PKG_VERSION")),
-      ("os", std::env::consts::OS),
-      ("arch", std::env::consts::ARCH),
-    ])
-    .send() {
-      logger.warn("send_telemetry", &format!("Failed to send telemtry: {}", err.to_string()));
+  match reqwest::blocking::Client::builder()
+    .timeout(std::time::Duration::from_secs(3))
+    .build()
+  {
+    Ok(client) => {
+      if let Err(err) = client
+        .get("https://telemetry.jackz.me/track.php")
+        .query(&[
+          ("item", "l4d2-workshop-downloader"),
+          ("v", env!("CARGO_PKG_VERSION")),
+          ("os", std::env::consts::OS),
+          ("arch", std::env::consts::ARCH),
+        ])
+        .send() {
+          logger.warn("send_telemetry", &format!("Failed to send telemetry: {}", err.to_string()));
+      }
+    },
+    Err(err) => {
+      logger.warn("send_telemetry", &format!("Failed to setup sending telemetry: {}", err.to_string()));
+    }
   }
+  
 }
