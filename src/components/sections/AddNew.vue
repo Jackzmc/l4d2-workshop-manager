@@ -1,6 +1,6 @@
 <template>
 <div class="mx-5 mt-4">
-    <div class="box">
+    <div class="box" v-if="installState != 1">
         <div class="columns is-variable is-8">
             <div class="column">
                 <form @submit.prevent="search">
@@ -48,6 +48,10 @@
             </div>
         </div>
     </div>
+    <div class="box" v-else>
+        <h4 class="title is-4">Installing...</h4>
+        <progress class="progress" :value="installProgress.val" :max="installProgress.max" />
+    </div>
     <div class="box" v-if="item">
         <div class="columns">
             <div class="column is-8">
@@ -67,8 +71,8 @@
                     <span class="tag is-link">{{formatBytes(item.file_size)}}</span>
                 </div>
                 <div class="buttons">
-                    <b-button v-if="installState < 2" type="is-info" @click="install" :loading="installState == 1">Install Addon</b-button>
-                    <p class="has-text-success" v-if="installState">Installed</p>
+                    <b-button v-if="installState < 2" type="is-info" @click="install" :loading="installState == 1">Install</b-button>
+                    <p class="has-text-success" v-if="installState">Installed&nbsp;</p>
                     <a class="button is-secondary" target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
                         Open Page
                     </a>
@@ -111,7 +115,7 @@ import presetHTML5 from '@bbob/preset-html5'
 
 import { formatBytes, formatDate } from '@/js/utils'
 import { invoke } from '@tauri-apps/api/tauri'
-
+import { listen } from '@tauri-apps/api/event'
 
 export default {
     data() {
@@ -122,7 +126,11 @@ export default {
             item: null,
             installState: 0, //0->Inactive, 1->Installing, 2->Installed
             fetching: false,
-            searching: false
+            searching: false,
+            installProgress: {
+                max: 0,
+                value: 0
+            }
         }
     },
     computed: {
@@ -208,9 +216,9 @@ export default {
             .finally(() => this.fetching = false)
         },
         async select(item) {
+            console.log(item)
             this.item = item
             const installInfo = await invoke("get_install_info", { id: item.publishedfileid.toString() })
-            console.log('got info', installInfo)
             this.installState = installInfo ? 2 : 0
         },
         formatNumber(inp) {
@@ -218,6 +226,8 @@ export default {
         },
         async install() {
             this.installState = 1
+            this.installProgress.val = 0
+            this.installProgress.max = this.item.file_size
             try {
                 await invoke('download_addon', { item: this.item })
                 this.item = null
@@ -243,9 +253,32 @@ export default {
             }else if(!isNaN(parseInt(url))) {
                 this.fetchItem()
             }else{
-                this.id = this.url.replace(/\D/g,'')
+                this.id = url.replace(/\D/g,'')
             }
         }
+    },
+    async created() {
+        await listen('progress', ({payload}) => {
+            if(payload.error) {
+                this.$buefy.dialog.alert({
+                    title: 'Install Failed',
+                    message: 'An error occurred while installing this addon:<br>' + payload.error,
+                    type: 'is-danger',
+                    ariaRole: 'alertdialog',
+                    ariaModal: true
+                })
+                return console.error(`${payload.publishedfileid} -> ${payload.error}`)
+            }
+            this.installProgress.val = payload.bytes_downloaded
+            if(payload.complete) {
+                this.$buefy.dialog.alert({
+                    message: `Successfully installed item`,
+                    type: 'is-success',
+                    ariaRole: 'alertdialog',
+                    ariaModal: true
+                })
+            }
+        })
     }
 }
 </script>

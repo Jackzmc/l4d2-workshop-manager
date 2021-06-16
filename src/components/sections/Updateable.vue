@@ -1,5 +1,27 @@
 <template>
 <div>
+    <div class="box" v-if="updating">
+      <div v-for="(update,key) in updates" :key="key">
+        <b>{{update.title}}</b> <em>({{key}})</em><br>
+        <div style="width:60%" class="is-inline">
+          <progress class="progress is-success is-inline-block" :value="update.bytes_downloaded" :max="update.bytes_total" style="width:60%" >
+            {{update.bytes_downloaded / update.bytes_total * 100}}%
+          </progress>
+        </div>
+        <div class="is-inline" style="margin-left: 1em">
+          <p v-if="update.error" class="has-text-danger">
+            <b>Failed: </b>{{update.error}}
+          </p>
+          <template v-else-if="update.complete">
+            Complete 
+          </template>
+          <template v-else>
+            {{formatBytes(update.bytes_downloaded)}} / {{formatBytes(update.bytes_total)}}
+            &nbsp; ({{Math.round(update.bytes_downloaded / update.bytes_total * 100)}}%)
+          </template>
+        </div>
+      </div>
+    </div>
     <table class="table is-fullwidth">
         <thead>
             <tr>
@@ -48,6 +70,7 @@
 
 <script>
 import { invoke } from '@tauri-apps/api/tauri'
+import { listen } from '@tauri-apps/api/event'
 
 import { formatBytes, formatDate } from '@/js/utils'
 const CONCURRENT_DOWNLOADS = 3
@@ -119,7 +142,19 @@ export default {
         }  
     },
     async created() {
-        
+        await listen('progress', ({payload}) => {
+        if(payload.error) {
+            return console.error(`${payload.publishedfileid} -> ${payload.error}`)
+        }
+        this.updates[payload.publishedfileid] = {
+            ...this.updates[payload.publishedfileid],
+            bytes_downloaded: payload.bytes_downloaded,
+            complete: payload.complete
+        }
+        if(payload.complete) {
+            setTimeout(() => this.$delete(this.updates, payload.publishedfileid), 5000)
+        }
+        })
     },
 }
 </script>

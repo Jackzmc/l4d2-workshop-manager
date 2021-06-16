@@ -7,7 +7,6 @@ import 'buefy/dist/buefy.css'
 Vue.use(Buefy, {
   defaultIconPack: 'fas',
   defaultIconComponent: "font-awesome-icon",
-  defaultTrapFocus: "chevron-right"
 })
 
 import { library } from '@fortawesome/fontawesome-svg-core'

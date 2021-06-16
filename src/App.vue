@@ -63,7 +63,6 @@
 
 <script>
 import { invoke } from '@tauri-apps/api/tauri'
-import { listen } from '@tauri-apps/api/event'
 
 import Updateable from '@/components/sections/Updateable.vue'
 import Managed from '@/components/sections/Managed.vue'
@@ -195,19 +194,7 @@ export default {
     } catch(err) {
       console.error('Could not get config: ', err)
     }
-    await listen('progress', ({payload}) => {
-      if(payload.error) {
-          return console.error(`${payload.publishedfileid} -> ${payload.error}`)
-      }
-      this.updates[payload.publishedfileid] = {
-          ...this.updates[payload.publishedfileid],
-          bytes_downloaded: payload.bytes_downloaded,
-          complete: payload.complete
-      }
-      if(payload.complete) {
-          setTimeout(() => this.$delete(this.updates, payload.publishedfileid), 5000)
-      }
-    })
+    
     document.addEventListener("resize", () => {
       document.getElementById("section").style.height = window.innerHeight 
     })
