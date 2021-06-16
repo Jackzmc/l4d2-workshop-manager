@@ -93,6 +93,10 @@ impl Downloads {
         }
     }
 
+    pub fn size(&self) -> usize {
+        self.downloads.len()
+    }
+
     pub fn set_download(&mut self, index: usize, item: DownloadEntry) {
         self.downloads[index] = item;
     }

@@ -369,7 +369,7 @@ fn main() {
     };
 
     if settings.telemetry {
-      send_telemetry(&logger);
+      send_telemetry(&logger, downloads.size());
     }
 
     app.manage(Data {
@@ -415,7 +415,7 @@ fn prompt_game_dir() -> PathBuf {
   }
 }
 
-fn send_telemetry(logger: &logger::Logger) {
+fn send_telemetry(logger: &logger::Logger, downloads: usize) {
   match reqwest::blocking::Client::builder()
     .timeout(std::time::Duration::from_secs(3))
     .build()
@@ -428,6 +428,7 @@ fn send_telemetry(logger: &logger::Logger) {
           ("v", env!("CARGO_PKG_VERSION")),
           ("os", std::env::consts::OS),
           ("arch", std::env::consts::ARCH),
+          ("downloaded", &downloads.to_string())
         ])
         .send() {
           logger.warn("send_telemetry", &format!("Failed to send telemetry: {}", err.to_string()));
