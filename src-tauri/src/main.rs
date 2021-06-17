@@ -85,7 +85,8 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
             unknown_ids.push(UnknownFile {
               publishedfileid: filename.clone(), 
               file_size: Some(metadata.len()),
-              time_updated: Some(metadata.modified().unwrap().duration_since(UNIX_EPOCH).expect("time went backwards").as_millis() as u64)
+              time_updated: metadata.modified().ok()
+                .map(|metadata| metadata.duration_since(UNIX_EPOCH).expect("time went backwards").as_millis() as u64)
             });
           } else {
             unknown_ids.push(UnknownFile {
@@ -204,9 +205,9 @@ fn close_splashscreen(
   main: State<MainWindow>,
 ) {
   // Close splashscreen
-  splashscreen.0.lock().unwrap().close().unwrap();
+  splashscreen.0.lock().expect("splashscreen lock fail").close().expect("splash close fail");
   // Show main window
-  main.0.lock().unwrap().show().unwrap();
+  main.0.lock().expect("main lock fail").show().expect("main close fail");
 }
 
 #[tauri::command]
@@ -214,7 +215,7 @@ fn get_install_info(
   state: tauri::State<'_, Data>,
   id: String
 ) -> Option<config::DownloadEntry> {
-  match state.downloads.lock().unwrap().get_download(&id) {
+  match state.downloads.lock().expect("get_install_info: Could not get downloads lock").get_download(&id) {
     Some(download) => Some(download.clone()),
     None => None
   }
@@ -245,7 +246,7 @@ fn import_addon(
       return Err(err.to_string());
     }
   }
-  let mut downloads = state.downloads.lock().unwrap();
+  let mut downloads = state.downloads.lock().expect("import_addon: Could not get downloads lock");
   downloads.add_download(download);
 
   if let Err(err) = downloads.save() {
@@ -312,7 +313,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         complete: true
       }).ok();
       let entry = config::DownloadEntry::from_item(&item);
-      let mut downloads = state.downloads.lock().unwrap();
+      let mut downloads = state.downloads.lock().expect("download_addon: Could not get downloads lock");
       match downloads.get_id_index(&item.publishedfileid) {
         Some(index) => downloads.set_download(index, entry),
         None => downloads.add_download(entry)
@@ -332,10 +333,10 @@ fn main() {
   .setup(|app| {
     // set the splashscreen and main windows to be globally available with the tauri state API
     app.manage(SplashscreenWindow(Arc::new(Mutex::new(
-      app.get_window("splashscreen").unwrap(),
+      app.get_window("splashscreen").expect("splash window fail"),
     ))));
     app.manage(MainWindow(Arc::new(Mutex::new(
-      app.get_window("main").unwrap(),
+      app.get_window("main").expect("main window fail"),
     ))));
     //TODO: Check if settings exists, if not, create new. exit on error (or send err)
     let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));

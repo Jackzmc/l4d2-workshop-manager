@@ -13,14 +13,14 @@ pub fn prompt_game_dir() -> PathBuf {
         Some((&["left4dead2.exe"], "left4dead2.exe"))
     ) {
         let path = PathBuf::from(file_path)
-        .parent()
-        .unwrap()
-        .join("left4dead2")
-        .join("addons");
+            .parent()
+            .expect("Invalid folder: No parent")
+            .join("left4dead2")
+            .join("addons");
         if !path.exists() {
-        std::fs::create_dir_all(&path).ok();
-        println!("Warn: left4dead2/addons folder missing, creating..");
-        return prompt_game_dir();
+            std::fs::create_dir_all(&path).ok();
+            println!("Warn: left4dead2/addons folder missing, creating..");
+            return path;
         }
         return path
     } else {

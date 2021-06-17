@@ -1,9 +1,15 @@
 use std::{path::PathBuf, io, fs};
 use serde::{Deserialize, Serialize};
 
+#[cfg(debug_assertions)]
+const APPDATA_FOLDER_NAME: &str = "l4d2-workshop-dev";
+#[cfg(not(debug_assertions))]
+const APPDATA_FOLDER_NAME: &str = "l4d2-workshop-downloader";
+
 pub fn get_appdir() -> PathBuf {
-    let folder = dirs::config_dir().expect("Could not find a valid config folder").join("l4d2-workshop-downloader");
-    if !&folder.exists() {
+
+    let folder = dirs::config_dir().expect("Could not find a valid config folder").join(APPDATA_FOLDER_NAME);
+    if !folder.exists() {
         fs::create_dir_all(&folder).expect("Could not create config folder");
     }
     return folder;
@@ -128,7 +134,7 @@ impl Settings {
         Settings {
             gamedir: path,
             version: None,
-            telemetry: false
+            telemetry: true
         }
     }
     pub fn load() -> Result<Settings, String> {
