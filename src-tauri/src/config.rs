@@ -123,14 +123,14 @@ impl Downloads {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
-    pub gamedir: PathBuf,
+    pub gamedir: Option<PathBuf>,
     pub version: Option<String>,
     pub telemetry: bool
 }
 
 #[allow(dead_code)]
 impl Settings {
-    pub fn new(path: PathBuf) -> Settings {
+    pub fn new(path: Option<PathBuf>) -> Settings {
         Settings {
             gamedir: path,
             version: None,

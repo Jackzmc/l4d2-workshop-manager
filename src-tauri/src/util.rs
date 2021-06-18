@@ -7,6 +7,7 @@ pub struct Addons {
 }
 
 pub fn prompt_game_dir() -> PathBuf {
+    //FIXIME: Figure out why this crashes?
     if let Some(file_path) = tinyfiledialogs::open_file_dialog(
         "Choose where Left 4 Dead 2 is installed", 
         "",

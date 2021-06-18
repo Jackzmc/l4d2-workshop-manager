@@ -71,7 +71,7 @@ into a method to be reused for disable check
 fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   let regex = Regex::new(r"([0-9]{7,})").unwrap();
   let mut unknown_ids = Vec::new();
-  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir) {
+  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.as_ref().unwrap()) {
     Ok(results) => {
       //Tries to find an ID to parse
       let mut fileids: Vec<String> = Vec::with_capacity(results.len());
@@ -81,7 +81,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
         } else {
           //ItemType::Unknown
           let full_file = format!("{}.vpk", filename);
-          if let Ok(metadata) = std::fs::metadata(&state.settings.gamedir.join(full_file)) {
+          if let Ok(metadata) = std::fs::metadata(&state.settings.gamedir.as_ref().unwrap().join(full_file)) {
             unknown_ids.push(UnknownFile {
               publishedfileid: filename.clone(), 
               file_size: Some(metadata.len()),
@@ -100,7 +100,7 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
       fileids
     },
     Err(err) => {
-      state.logger.error("get_items", &format!("get_vpks_in_folder returnd error: {}\nDirectory: {:?}", err, state.settings.gamedir));
+      state.logger.error("get_items", &format!("get_vpks_in_folder returnd error: {}\nDirectory: {:?}", err, state.settings.gamedir.as_ref().unwrap()));
       return Err(err)
     }
   };
@@ -228,8 +228,8 @@ fn import_addon(
   item: steam_workshop_api::WorkshopItem,
   is_workshop: bool
 ) -> Result<(), String> {
-  let dest_folder = &state.settings.gamedir;
-  let src_folder = if is_workshop { dest_folder.join("workshop") } else { state.settings.gamedir.clone() };
+  let dest_folder = state.settings.gamedir.as_ref().unwrap();
+  let src_folder = if is_workshop { dest_folder.join("workshop") } else { dest_folder.clone() };
 
   let filename = format!("{}.vpk", &item.publishedfileid);
   let download = config::DownloadEntry::from_item(&item);
@@ -262,7 +262,7 @@ fn import_addon(
 async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
   let config = &state.settings;
   let mut dest = {
-    let fname = config.gamedir.join(format!("{}.vpk", item.publishedfileid));
+    let fname = config.gamedir.as_ref().unwrap().join(format!("{}.vpk", item.publishedfileid));
     std::fs::File::create(fname).expect("Could not create file")
   };
   let mut downloaded: usize = 0;
@@ -329,6 +329,14 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
 }
 
 fn main() {
+  if let Err(_) = config::Settings::load() {
+    let gamedir = util::prompt_game_dir();
+    let mut settings = config::Settings::new(Some(gamedir));
+    if let Err(err) = settings.save() {
+      panic!("Could not save settings: {}", err);
+    }
+  };
+
   tauri::Builder::default()
   .setup(|app| {
     // set the splashscreen and main windows to be globally available with the tauri state API
@@ -342,17 +350,12 @@ fn main() {
     let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
     let settings = match config::Settings::load() {
       Ok(config) => config,
-      Err(_e) => {
-        let gamedir = util::prompt_game_dir();
-        let mut settings = config::Settings::new(gamedir);
-        if let Err(err) = settings.save() {
-          logger.warn("setup", &format!("Could not save settings: {}", err));
-        }
-        settings
+      Err(err) => {
+        panic!("Settings failure: {}", err);
       }
     };
-    if !settings.gamedir.exists() {
-      logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.gamedir.to_string_lossy()));
+    if !settings.gamedir.as_ref().unwrap().exists() {
+      logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.gamedir.as_ref().unwrap().to_string_lossy()));
       std::process::exit(1);
     }
     let downloads = match config::Downloads::load() {
@@ -384,11 +387,13 @@ fn main() {
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
+
+
 }
 
 
 fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
-  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.join("workshop").as_path()) {
+  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.as_ref().unwrap().join("workshop").as_path()) {
       Ok(fileids) => fileids,
       Err(err) => {
       state.logger.error("get_workshop_items", &format!("Failed to get workshop items: {}", err));
