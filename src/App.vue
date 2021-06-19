@@ -12,8 +12,9 @@
           <a v-for="(key, index) in Object.keys($options.MAIN_SECTIONS)" :key="key"
             :class="['panel-block', {'panel-active': section.id == key, 'bold-line': index == Object.keys($options.MAIN_SECTIONS).length - 1}]" 
             @click="openSection(key)"
+            v-show="key != 'Updateable' || files.updateable.length > 0"
           >
-            <span class="icon-text">
+            <span class="icon-text" >
               <span class="icon">
                 <font-awesome-icon icon="list" aria-hidden="true" />
               </span>
@@ -51,6 +52,7 @@
           :items="items"
           v-bind="section.props"
           @refreshItems="getItems"  
+          :key="section.id"
         />
         <p v-else class="title is-4 has-text-centered mt-5">Select an item on the left to begin</p>
         <br><br>
