@@ -18,7 +18,7 @@
                         <!-- TODO: Implement prompting for gamedir -->
                         <p class="control" >
                             <a class="button is-info">
-                            Update
+                            Browse
                             </a>
                         </p>
                     </div>
@@ -40,6 +40,7 @@
                     </div>
                 </div>
             </div>
+            <p class="help is-info">The following information is sent: program version, OS Type, CPU Architecture, and the count of all your managed items</p>
         </div>
     </div>
 </div>
