@@ -1,9 +1,14 @@
 <template>
 <div>
-    <p class="ml-5">
-        <font-awesome-icon icon="exclamation-triangle" class="has-text-warning" />
-        These items do not include a publishedfileid, therefore cannot be managed by this tool. Add an id to the filename and refresh.
-    </p>
+    <div class="ml-5 my-3">
+        <article class="message is-warning">
+        <div class="message-body">
+            <font-awesome-icon icon="exclamation-triangle" />
+            These items do not include a publishedfileid, therefore cannot be managed by this tool. <br>
+            Add their workshop id to the filename and refresh.
+        </div>
+        </article>
+    </div>
     <table class="table is-fullwidth">
         <thead>
             <tr>
