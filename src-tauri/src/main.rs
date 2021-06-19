@@ -341,10 +341,12 @@ fn main() {
   .setup(|app| {
     // set the splashscreen and main windows to be globally available with the tauri state API
     app.manage(SplashscreenWindow(Arc::new(Mutex::new(
-      app.get_window("splashscreen").expect("splash window fail"),
+      app.get_window("splashscreen").expect("splash window fail")
     ))));
+    let main = app.get_window("main").expect("main window fail");
+    main.hide().ok();
     app.manage(MainWindow(Arc::new(Mutex::new(
-      app.get_window("main").expect("main window fail"),
+     main
     ))));
     //TODO: Check if settings exists, if not, create new. exit on error (or send err)
     let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
@@ -390,7 +392,6 @@ fn main() {
 
 
 }
-
 
 fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
   let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.as_ref().unwrap().join("workshop").as_path()) {
