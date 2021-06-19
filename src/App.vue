@@ -51,8 +51,10 @@
           :is="section.component" 
           :items="items"
           v-bind="section.props"
-          @refreshItems="getItems"  
           :key="section.id"
+          @enable="enableItem"
+          @disable="disableItem"
+          @refreshItems="getItems"  
         />
         <p v-else class="title is-4 has-text-centered mt-5">Select an item on the left to begin</p>
         <br><br>
@@ -136,6 +138,15 @@ export default {
     }
   },
   methods: {
+    enableItem(category, id) {
+      const index = this.files[category].find(itm => itm.publishedfileid == id)
+      console.log(category, id, index)
+      if(index > -1) this.files[category][index].enabled = true
+    },
+    disableItem(category, id) {
+      const index = this.files[category].find(itm => itm.publishedfileid == id)
+      if(index > -1) this.files[category][index].enabled = false
+    },
     openSection(name) {
       let sectionProps = {}
       if(name === "Settings") {
@@ -176,6 +187,7 @@ export default {
             default: 
               category = "unmanaged";
           }
+          file.item.enabled = file.enabled || false
           this.files[category].push(file.item)
         }
       }catch(error) {

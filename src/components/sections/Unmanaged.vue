@@ -1,9 +1,15 @@
 <template>
 <div>
-    <table class="table is-fullwidth">
+    <MenuItem ref="menu" :item="menuItem" 
+        @enable="$emit('enable', 'unmanaged', menuItem.publishedfileid)" 
+        @disable="$emit('disable', 'unmanaged', menuItem.publishedfileid)" 
+        @uninstall="$emit('uninstall', 'unmanaged',  menuItem.publishedfileid)"
+        @select="selected[menuItem.publishedfileid] = !selected[menuItem.publishedfileid]" 
+    />
+    <table class="table is-fullwidth hoverable">
         <thead>
             <tr>
-                <th style="width: 40px">
+                <th style="width: 80px">
                     <b-checkbox @input="onSelectAll" />
                 </th>
                 <th>Item Name</th>
@@ -13,7 +19,10 @@
         </thead>
         <tbody>
             <tr v-for="item in items" :key="item.publishedfileid" >
-                <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
+                <td>
+                    <b-checkbox v-model="selected[item.publishedfileid]" />
+                    <a class="is-pulled-right" style="color:black"><font-awesome-icon icon="ellipsis-v" @click="openMenu(item)"/></a>
+                </td>
                 <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
                     <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
                         {{item.title || item.publishedfileid}}
@@ -52,15 +61,20 @@
 
 <script>
 import { invoke } from '@tauri-apps/api/tauri'
-
+import MenuItem from '@/components/MenuItem'
 import { formatBytes, formatDate } from '@/js/utils'
+
 export default {
     props: ['items'],
+    components: {
+        MenuItem
+    },
     data() {
         return {
             active: false,
             selected: {},
-            loading: false
+            loading: false,
+            menuItem: null
         }
     },
     computed: {
@@ -110,7 +124,25 @@ export default {
             for(const item of this.items) {
                 this.$set(this.selected, item.publishedfileid, state)
             }
-        } 
+        },
+        openMenu(item) {
+            if(!this.$refs.menu) return
+            this.menuItem = item
+            this.$refs.menu.open(item);
+        }
     }
 }
 </script>
+
+<style scoped>
+.context-item {
+    padding: 0.5em;
+    font-size: 1.3em;
+}
+.context-item a {
+    color: #167df0
+}
+.context-item a:hover {
+    color: black
+}
+</style>
