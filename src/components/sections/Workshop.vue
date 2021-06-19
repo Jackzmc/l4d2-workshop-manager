@@ -99,8 +99,8 @@ export default {
                     this.loading = false
                     this.$buefy.dialog.alert({
                         title: 'Addons Imported',
-                        message: `Successfully imported ${items_copy.length} items. Please unsubscribe to them on the steam workshop to prevent duplicates:`
-                            + items_copy.map(item => `<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=${item.publishedfileid}">${item.title}</a>`).join("<br"),
+                        message: `Successfully imported ${items_copy.length} items. <br>Please unsubscribe to them on the steam workshop to prevent duplicates:<br>`
+                            + items_copy.map(item => `<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=${item.publishedfileid}" target="_blank">${item.title}</a>`).join("<br"),
                         type: 'is-success',
                         ariaRole: 'alertdialog',
                         ariaModal: true
