@@ -1,5 +1,5 @@
 <template>
-<div>
+<div class="mt-3">
     <div class="box" v-if="updating">
       <div v-for="(update,key) in updates" :key="key">
         <b>{{update.title}}</b> <em>({{key}})</em><br>

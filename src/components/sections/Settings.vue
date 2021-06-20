@@ -1,5 +1,5 @@
 <template>
-<div class="container">
+<div class="container mt-3">
     <div class="box" v-if="hasChanged">
         <p>You have unsaved changes</p>
         <b-button type="is-success">Save</b-button>

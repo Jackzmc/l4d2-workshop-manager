@@ -1,5 +1,5 @@
 <template>
-<div>
+<div class="mt-3">
     <table class="table is-fullwidth">
         <thead>
             <tr>

@@ -1,5 +1,5 @@
 <template>
-<div class="mx-5 mt-4">
+<div class="mx-5 mt-5">
     <div class="box" v-if="installState != 1">
         <div class="columns is-variable is-8">
             <div class="column">

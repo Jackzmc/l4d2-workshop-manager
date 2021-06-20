@@ -4,11 +4,19 @@
   <br>
   <div id="app">
     <div class="columns is-gapless">
-      <div class="column is-3 panel-container" >
-        <nav class="panel is-info" style="height:650px">
+      <div class="column is-3 panel-container" style="position: fixed; left: 0; top: 1.9em">
+        <nav class="panel is-info" :style="{'height': collapsed ? '60px' : '650px'}">
           <p class="panel-heading not-rounded">
-            Items
+            <a @click="collapsed = !collapsed" class="has-text-white" >
+              <span class="icon-text">
+                <span class="icon">
+                  <font-awesome-icon icon="bars"/>
+                </span>
+                <span>Items</span>
+              </span>
+            </a>
           </p>
+          <template v-if="!collapsed">
           <a v-for="(key, index) in Object.keys($options.MAIN_SECTIONS)" :key="key"
             :class="['panel-block', {'panel-active': section.id == key, 'bold-line': index == Object.keys($options.MAIN_SECTIONS).length - 1}]" 
             @click="openSection(key)"
@@ -37,28 +45,50 @@
               <span>Add New</span>
             </span>
           </a>
+          <a :class="['panel-block', {'panel-active': section.id == 'SearchAdvanced'}]" @click="openSection('SearchAdvanced')">
+            <span class="icon-text">
+              <form @submit.prevent="$refs.searchComponent.search()" v-show="section.id == 'SearchAdvanced'">
+                <b-field expanded>
+                  <b-input ref="search" expanded icon-right="search" 
+                    v-model="search.query" :loading="search.loading" placeholder="Enter a query" 
+                  />
+                </b-field>
+              </form>
+              <template v-if="section.id != 'SearchAdvanced'">
+                <span :class="['icon', {'has-text-info': section.id != 'SearchAdvanced'}]">
+                  <font-awesome-icon icon="search" aria-hidden="true" />
+                </span>
+                <span>Search Workshop</span>
+              </template>
+            </span>
+          </a>
           <div class="panel-block" @click="getItems">
             <b-button type="is-info" outlined expanded :disabled="loading" :loading="loading">
               Refresh
             </b-button>
           </div>
+          </template>
         </nav>
-        <p class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
+        <p v-if="!collapsed" class="has-text-centered mt-1"><em>V{{$VERSION}} Build #{{$BUILD}}</em></p>
       </div>
-      <div class="column mt-3 section-component" id="section">
+      <div class="column section-component mt-1" id="section" v-if="!section.custom" :style="sectionStyle">
         <component 
+          ref="section"
           v-if="section.component"
           :is="section.component" 
           :items="items"
           v-bind="section.props"
           @refreshItems="getItems"  
           :key="section.id"
+          :query="search.query"
         />
         <p v-else class="title is-4 has-text-centered mt-5">Select an item on the left to begin</p>
         <br><br>
       </div>
     </div>
-    
+    <div v-if="section.custom" :style="sectionStyle">
+      <SearchAdvanced ref="searchComponent" v-if="section.id === 'SearchAdvanced'" :query="search.query" />
+    </div>
   </div>
 </div>
 </template>
@@ -73,6 +103,7 @@ import Workshop from '@/components/sections/Workshop.vue'
 import Unknown from '@/components/sections/Unknown.vue'
 import AddNew from '@/components/sections/AddNew.vue'
 import Settings from '@/components/sections/Settings.vue'
+import SearchAdvanced from '@/components/sections/SearchAdv.vue'
 
 import TitleBar from '@/components/Titlebar.vue'
 
@@ -90,14 +121,15 @@ const MAIN_SECTIONS = {
 const SECTIONS = {
   ...MAIN_SECTIONS,
   AddNew,
-  Settings
+  Settings,
+  SearchAdvanced
 }
 
 export default {
   name: 'App',
   components: {
     ...SECTIONS,
-    TitleBar
+    TitleBar,
   },
   MAIN_SECTIONS,
   SECTIONS,
@@ -105,8 +137,6 @@ export default {
     return {
       error: null,
       settings: null,
-      updates: {},
-      updating: false,
       loading: false,
       files: {
         updateable: [],
@@ -115,12 +145,17 @@ export default {
         workshop: [],
         unknown: [],
       },
-      total_bytes: {},
       section: {
         component: null,
         props: null,
-        id: null
+        id: null,
+        custom: false
       },
+      search: {
+        query: null,
+        loading: false
+      },
+      collapsed: false
     }
   },
   computed: {
@@ -133,19 +168,38 @@ export default {
     },
     items() {
       return this.section.id ? this.files[this.section.id.toLowerCase()] : []
+    },
+    sectionStyle() {
+      return this.collapsed ? `margin-top: 4em !important` : `margin-left: 20em`
     }
   },
   methods: {
     openSection(name) {
+      if(name === "SearchAdvanced") {
+        this.section.id = name
+        this.section.custom = true
+        this.section.component = null
+        this.$refs.search.focus()
+        return 
+      }
+      //Setup props
       let sectionProps = {}
       if(name === "Settings") {
         sectionProps = {
           settings: this.settings
         }
       }
-      this.section.component = SECTIONS[name]
-      this.section.id = name
+
+      
+
+      //Update visible section
       this.section.props = sectionProps
+      this.section.custom = false
+      this.section.id = name
+      this.section.component = SECTIONS[name]
+
+      //Any post events (ex: hooking focuses)
+      
     },
     formatBytes, 
     formatDate,
@@ -185,6 +239,7 @@ export default {
     }
   },
   async created() {
+    this.openSection('Unmanaged')
     try {
       await this.getItems() 
     } catch(err) {
@@ -199,6 +254,10 @@ export default {
     
     document.addEventListener("resize", () => {
       document.getElementById("section").style.height = window.innerHeight 
+    })
+
+    this.$on('searching', (value) => {
+      this.search.loading = value
     })
   },
   async mounted() {

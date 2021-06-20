@@ -1,5 +1,5 @@
 <template>
-<div>
+<div class="mt-3">
     <div class="ml-5 my-3">
         <article class="message is-warning">
         <div class="message-body">
