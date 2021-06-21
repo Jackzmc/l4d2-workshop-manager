@@ -40,8 +40,7 @@
                     <figure class="image is-1by1" >
                         <img :src="item.preview_url" :alt="item.title">
                     </figure>
-                <p class="item-title subtitle">{{item.title}}</p>
-                <p>by {{item.author}}</p>
+                <p class="item-title subtitle">{{item.title}}<br> by {{item.author}}</p>
             </div>
         </div>
     </div>
