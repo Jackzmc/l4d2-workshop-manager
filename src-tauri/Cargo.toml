@@ -24,6 +24,7 @@ console = "0.14.1"
 chrono = "0.4"
 env_logger = "0.11.4"
 log = "0.4.22"
+sourcepak = "0.3.0"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

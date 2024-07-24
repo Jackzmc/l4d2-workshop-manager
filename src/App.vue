@@ -10,15 +10,15 @@
             Items
           </p>
           <a v-for=" data in SIDEBAR_SECTIONS " :key="data.id"
-            :class="['panel-block', { 'panel-active': selected.id === data.id, 'bold-line': selected.id == data.id }]"
+            :class="['panel-block', 'is-block', { 'panel-active': selected.id === data.id, 'bold-line': selected.id == data.id }]"
             @click="openSection( data )">
             <span class="icon-text">
               <span class="icon">
                 <font-awesome-icon icon="list" aria-hidden="true" />
               </span>
-              <span>{{ data.title }} <span class="tag is-info is-light"
-                  v-if=" files[data.id] ">{{ files[data.id].length }}</span></span>
+              <span>{{ data.title }}</span>
             </span>
+            <span class="tag is-white has-text-black ml-2 is-pulled-right" v-if="files[data.id]">{{ files[data.id].length }}</span>
           </a>
           <a :class="['panel-block', { 'panel-active': selected.title == 'Settings' }]"
             @click="openSection( 'settings' )">

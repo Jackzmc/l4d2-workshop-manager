@@ -84,6 +84,8 @@ fn get_my_addons(state: tauri::State<'_, Data>) -> Result<Vec<File2>, String> {
       last_update_time: meta.modified().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
       workshop_info: None
     };
+    let path = entry.path();
+    util::get_addon_info(&path);
     files.push(file);
   }
   Ok(files)
