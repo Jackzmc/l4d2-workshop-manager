@@ -1,0 +1,30 @@
+[package]
+name = "l4d2-addon-manager"
+version = "0.0.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "1", features = [] }
+
+[dependencies]
+tauri = { version = "1", features = ["shell-open"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+steam-workshop-api = "0.2.5"
+reqwest = { version = "0.11", features = ["json", "blocking", "stream"] }
+regex = "1"
+dirs = "3.0.2"
+futures = "0.3.15"
+tinyfiledialogs = "3.0"
+console = "0.14.1"
+chrono = "0.4"
+env_logger = "0.11.4"
+log = "0.4.22"
+
+[features]
+# This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
