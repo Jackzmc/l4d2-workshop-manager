@@ -13,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use tauri::{Manager, State, Window};
 use futures::{StreamExt};
 use std::{io::Write, time::{UNIX_EPOCH}};
+use std::fs::DirEntry;
+use std::os::unix::fs::MetadataExt;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use log::debug;
 
@@ -61,7 +64,45 @@ struct UnknownFile {
   time_updated: Option<u64>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct File2 {
+  file_name: String,
+  file_size: u64,
+  last_update_time: Option<u64>,
 
+  workshop_info: Option<WorkshopItem>
+}
+#[tauri::command]
+fn get_my_addons(state: tauri::State<'_, Data>) -> Result<Vec<File2>, String> {
+  let entries = get_vpks_in_folder(state.settings.gamedir.as_ref().unwrap())?;
+  let mut files: Vec<File2> = vec![];
+  for entry in entries {
+    let meta = entry.metadata().unwrap();
+    let file = File2 {
+     file_name: entry.file_name().to_str().unwrap().to_string(),
+     file_size: meta.size(),
+      last_update_time: meta.modified().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
+      workshop_info: None
+    };
+    files.push(file);
+  }
+  Ok(files)
+}
+
+fn get_vpks_in_folder(path: &PathBuf) -> Result<Vec<DirEntry>, String> {
+  let entries = std::fs::read_dir(path).map_err(|e| e.to_string())?;
+  let mut files: Vec<DirEntry> = Vec::new();
+  for entry in entries {
+    let entry = entry.map_err(|e| e.to_string())?;
+    let file_name = entry.file_name();
+    let file_name = file_name.to_str().expect("bad filename");
+    if file_name.ends_with(".vpk") {
+      files.push(entry)
+    }
+  }
+  debug!("found {} vpks in {:?}", files.len(), path);
+  return Ok(files);
+}
 
 /*TODO: Refactor the check of:
 1. Valid File name
@@ -70,6 +111,7 @@ into a method to be reused for disable check
 */
 #[tauri::command]
 fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
+  debug!("get_items start");
   let regex = Regex::new(r"([0-9]{7,})").unwrap();
   let mut unknown_ids = Vec::new();
   let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.as_ref().unwrap()) {
@@ -109,6 +151,8 @@ fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
   if fileids.is_empty() {
     return Ok(Vec::new());
   }
+
+  debug!("unknown_ids = {}", unknown_ids.len());
 
   let mut files: Vec<File> = Vec::with_capacity(fileids.len());
   let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
@@ -421,6 +465,7 @@ fn main() {
     Ok(())
   })
   .invoke_handler(tauri::generate_handler![
+    get_my_addons,
     get_items, 
     download_addon,
     get_settings,

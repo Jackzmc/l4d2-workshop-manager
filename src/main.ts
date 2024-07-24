@@ -11,6 +11,12 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 library.add( faAngleDown, faAngleUp, faCog, faList, faWindowMinimize, faWindowMaximize, faTimes, faExclamationTriangle, faPlus, faSearch, faLink, faAngleRight, faArrowUp, faLongArrowAltLeft )
 
+import devtools from '@vue/devtools'
+
+if ( process.env.NODE_ENV === 'development' ) {
+    devtools.connect(/* host, port */ )
+}
+
 createApp( App )
     .use( Buefy, {
         defaultIconPack: 'fas',

@@ -16,6 +16,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/vue-fontawesome": "^3.0.8",
     "@tauri-apps/api": "^1",
+    "@vue/devtools": "^6.6.3",
     "buefy": "npm:@ntohq/buefy-next",
     "fuse.js": "^7.0.0",
     "vue": "^3.3.4"

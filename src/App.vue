@@ -5,7 +5,7 @@
   <div id="app">
     <div class="columns is-gapless">
       <div class="column is-3 panel-container">
-        <nav class="panel is-info" style="height:650px">
+        <nav class="panel is-info">
           <p class="panel-heading not-rounded">
             Items
           </p>
@@ -42,8 +42,8 @@
               Refresh
             </b-button>
           </div> -->
+         <p class="has-text-centered mt-1"><em>v{{ APP_VERSION }} build #{{ BUILD_NUMBER }}</em></p>
         </nav>
-        <p class="has-text-centered mt-1"><em>V{{ APP_VERSION }} Build #{{ BUILD_NUMBER }}</em></p>
       </div>
       <div class="column mt-3 section-component" id="section">
         <component v-if=" selected.component " :is="selected.component" :items="files[selected.id]"
@@ -57,7 +57,7 @@
 </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 const APP_VERSION = __APP_VERSION__
 const BUILD_NUMBER = __BUILD_NUMBER__
 
@@ -70,13 +70,13 @@ import Workshop from '@/components/sections/Workshop.vue'
 // import Unknown from '@/components/sections/Unknown.vue'
 // import AddNew from '@/components/sections/AddNew.vue'
 // import Settings from '@/components/sections/Settings.vue'
-import { markRaw, ref } from 'vue'
+import { markRaw, ref, onMounted } from 'vue'
 
 const SIDEBAR_SECTIONS = [
     {
     id: "managed",
     title: "My Addons",
-    component: markRaw(Managed)
+    component: markRaw(Managed),
   },
   {
     id: "workshop",
@@ -84,7 +84,10 @@ const SIDEBAR_SECTIONS = [
     component: markRaw(Workshop)
   },
 ]
-let files = ref({
+let files = ref<{
+  workshop: any[],
+  managed: any[]
+}>({
   workshop: [],
   managed: []
 })
@@ -113,32 +116,18 @@ async function getItems() {
     files.value[category] = []
   }
   try {
-    const items = await invoke('get_items')
-    for(const file of items) {
-      let category = "unmanaged"
-      switch(file.item_type) {
-        case "Updateable": 
-          category = "updateable";
-          break
-        case "Managed": 
-          category = "managed";
-          break
-        case "Workshop": 
-          category = "workshop";
-          break;
-        case "Unknown":
-          category = "unknown"
-          break
-        default: 
-          category = "unmanaged";
-      }
-      files.value[category].push(file.item)
-    }
+    const items = await invoke('get_my_addons')
+    console.log(items)
   }catch(error) {
     error.value = error.message
   }
   loading.value = false
 }
+
+onMounted(async () => {
+  // const items = await invoke("get_my_addons")
+  files.value.managed = await invoke("get_my_addons")
+})
 </script>
 
 <style scoped>
@@ -161,8 +150,14 @@ async function getItems() {
   margin-bottom: 0 !important;
 }
 
+.panel-container {
+}
+
 .panel {
-  background-color: white
+  background-color: white;
+  border-right: 2px solid rgba(53, 51, 51, 0.336);
+  border-bottom: 2px solid rgba(53, 51, 51, 0.336);
+  height: 100%;
 }
 
 .panel-active {
