@@ -10,26 +10,17 @@
             Items
           </p>
           <a v-for=" data in SIDEBAR_SECTIONS " :key="data.id"
-            :class="['panel-block', 'is-block', { 'panel-active': selected.id === data.id, 'bold-line': selected.id == data.id }]"
+            :class="['panel-block', 'is-block', { 'panel-active': selected?.id === data.id, 'bold-line': selected?.id == data.id }]"
             @click="openSection( data )">
-            <span class="icon-text">
+            <span class="icon-text" v-if="data.icon">
               <span class="icon">
-                <font-awesome-icon icon="list" aria-hidden="true" />
+                <font-awesome-icon :icon="data.icon" aria-hidden="true" />
               </span>
               <span>{{ data.title }}</span>
             </span>
             <span class="tag is-white has-text-black ml-2 is-pulled-right" v-if="files[data.id]">{{ files[data.id].length }}</span>
           </a>
-          <a :class="['panel-block', { 'panel-active': selected.title == 'Settings' }]"
-            @click="openSection( 'settings' )">
-            <span class="icon-text">
-              <span class="icon">
-                <font-awesome-icon icon="cog" aria-hidden="true" />
-              </span>
-              <span>Settings</span>
-            </span>
-          </a>
-          <a :class="['panel-block', { 'panel-active': selected.title == 'Add New' }]" @click="openSection( 'new' )">
+          <a :class="['panel-block', { 'panel-active': selected?.id == 'new' }]" @click="openSection( 'new' )">
             <span class="icon-text">
               <span class="icon has-text-success">
                 <font-awesome-icon icon="plus" aria-hidden="true" />
@@ -46,8 +37,12 @@
         </nav>
       </div>
       <div class="column mt-3 section-component" id="section">
-        <component v-if=" selected.component " :is="selected.component" :items="files[selected.id]"
-          v-bind="selected.props" @refreshItems="getItems" :key="selected.title" />
+        <component v-if="selected " :is="selected.component" :items="selectedFiles"
+          :key="selected?.id" 
+          :settings="settings"
+          @refresh="onItems"
+          @saved="newSettings => settings = newSettings"
+        />
         <p v-else class="title is-4 has-text-centered mt-5">Select an item on the left to begin</p>
         <br><br>
       </div>
@@ -67,27 +62,33 @@ import TitleBar from '@/components/Titlebar.vue'
 import Managed from '@/components/sections/Managed.vue'
 // import Unmanaged from '@/components/sections/Unmanaged.vue'
 import Workshop from '@/components/sections/Workshop.vue'
+import Settings from '@/components/sections/Settings.vue';
 // import Unknown from '@/components/sections/Unknown.vue'
 // import AddNew from '@/components/sections/AddNew.vue'
 // import Settings from '@/components/sections/Settings.vue'
-import { markRaw, ref, onMounted } from 'vue'
+import { markRaw, ref, onMounted, computed, onBeforeMount } from 'vue'
 
 const SIDEBAR_SECTIONS = [
     {
     id: "managed",
     title: "My Addons",
-    component: markRaw(Managed),
+    component: markRaw( Managed ),
+    icon: "list"
   },
   {
     id: "workshop",
     title: "Workshop Addons",
-    component: markRaw(Workshop)
+    component: markRaw( Workshop ),
+    icon: "list"
   },
+  {
+    id: "settings",
+    title: "Settings",
+    component: markRaw( Settings ),
+    icon: "cog"
+  }
 ]
-let files = ref<{
-  workshop: any[],
-  managed: any[]
-}>({
+let files = ref<Record<string, any>>({
   workshop: [],
   managed: []
 })
@@ -99,14 +100,23 @@ let files = ref<{
 //   Unknown,
 // }
 
-let selected = ref({
-  component: null,
-  id: null
-})
+let selected = ref<{ id: string, component: any }>()
 let loading = ref(false)
-let error = ref(null)
+let error = ref( null )
+let settings = ref<Record<string, any>>()
 
-function openSection(data) {
+const selectedFiles = computed( {
+  get() {
+    if(!selected.value) return null
+    return files.value[selected.value.id]
+  },
+  set( value ) {
+    if(selected.value)
+      files.value[selected.value.id] = value
+  }
+})
+
+function openSection(data: any) {
   selected.value = data
 }
 
@@ -124,9 +134,21 @@ async function getItems() {
   loading.value = false
 }
 
+function onItems( entries: any[] ) {
+  if ( !selected.value ) return
+  console.debug( "got items for", selected.value?.id )
+  selectedFiles.value = entries
+}
+
+onBeforeMount(async () => {
+  settings.value = await invoke( "get_settings" )
+  console.log(settings.value)
+})
+
 onMounted(async () => {
   // const items = await invoke("get_my_addons")
-  files.value.managed = await invoke("get_my_addons")
+  files.value.managed = await invoke( "get_my_addons" )
+  files.value.workshop = await invoke("get_workshop_addons")
 })
 </script>
 

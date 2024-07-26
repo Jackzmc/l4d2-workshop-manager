@@ -6,8 +6,9 @@
 mod config;
 mod logger;
 mod util;
+mod commands;
 
-use steam_workshop_api::{Workshop, WorkshopItem};
+use steam_workshop_api::{SteamWorkshop, WorkshopItem};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State, Window};
@@ -17,12 +18,15 @@ use std::fs::DirEntry;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use log::debug;
+use log::{debug, error};
+use crate::commands::{get_my_addons, get_settings, get_workshop_addons, save_settings};
+use crate::util::{AddonInfo, WORKSHOP_ID_REGEX};
 
-struct Data {
-  settings: config::Settings,
-  downloads: Arc<Mutex<config::Downloads>>,
-  logger: logger::Logger
+pub struct Data {
+  pub settings: Arc<Mutex<config::SettingsManager>>,
+  pub workshop: SteamWorkshop,
+  pub downloads: Arc<Mutex<config::Downloads>>,
+  pub logger: logger::Logger
 }
 
 struct SplashscreenWindow(Arc<Mutex<Window>>);
@@ -40,181 +44,6 @@ enum ItemType {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-enum File {
-  Managed {
-    item: WorkshopItem,
-    item_type: ItemType,
-    enabled: bool
-  },
-  Item { 
-    item: WorkshopItem,
-    item_type: ItemType,
-  },
-  Unknown {
-    item: UnknownFile,
-    item_type: ItemType
-  }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-struct UnknownFile {
-  publishedfileid: String,
-  file_size: Option<u64>,
-  time_updated: Option<u64>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-struct File2 {
-  file_name: String,
-  file_size: u64,
-  last_update_time: Option<u64>,
-
-  workshop_info: Option<WorkshopItem>
-}
-#[tauri::command]
-fn get_my_addons(state: tauri::State<'_, Data>) -> Result<Vec<File2>, String> {
-  let entries = get_vpks_in_folder(state.settings.gamedir.as_ref().unwrap())?;
-  let mut files: Vec<File2> = vec![];
-  for entry in entries {
-    let meta = entry.metadata().unwrap();
-    let file = File2 {
-     file_name: entry.file_name().to_str().unwrap().to_string(),
-     file_size: meta.size(),
-      last_update_time: meta.modified().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
-      workshop_info: None
-    };
-    let path = entry.path();
-    util::get_addon_info(&path);
-    files.push(file);
-  }
-  Ok(files)
-}
-
-fn get_vpks_in_folder(path: &PathBuf) -> Result<Vec<DirEntry>, String> {
-  let entries = std::fs::read_dir(path).map_err(|e| e.to_string())?;
-  let mut files: Vec<DirEntry> = Vec::new();
-  for entry in entries {
-    let entry = entry.map_err(|e| e.to_string())?;
-    let file_name = entry.file_name();
-    let file_name = file_name.to_str().expect("bad filename");
-    if file_name.ends_with(".vpk") {
-      files.push(entry)
-    }
-  }
-  debug!("found {} vpks in {:?}", files.len(), path);
-  return Ok(files);
-}
-
-/*TODO: Refactor the check of:
-1. Valid File name
-2. Has ID or Unknown timestamp
-into a method to be reused for disable check
-*/
-#[tauri::command]
-fn get_items(state: tauri::State<'_, Data>) -> Result<Vec<File>, String> {
-  debug!("get_items start");
-  let regex = Regex::new(r"([0-9]{7,})").unwrap();
-  let mut unknown_ids = Vec::new();
-  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.as_ref().unwrap()) {
-    Ok(results) => {
-      //Tries to find an ID to parse
-      let mut fileids: Vec<String> = Vec::with_capacity(results.len());
-      for filename in results.iter() {
-        if let Some(mat) = regex.find(&filename) {
-          fileids.push(filename[mat.start()..mat.end()].to_string());
-        } else {
-          //ItemType::Unknown
-          let full_file = format!("{}.vpk", filename);
-          if let Ok(metadata) = std::fs::metadata(&state.settings.gamedir.as_ref().unwrap().join(full_file)) {
-            unknown_ids.push(UnknownFile {
-              publishedfileid: filename.clone(), 
-              file_size: Some(metadata.len()),
-              time_updated: metadata.modified().ok()
-                .map(|metadata| metadata.duration_since(UNIX_EPOCH).expect("time went backwards").as_millis() as u64)
-            });
-          } else {
-            unknown_ids.push(UnknownFile {
-              publishedfileid: filename.clone(), 
-              file_size: None,
-              time_updated: None
-            });
-          }
-        }
-      }
-      fileids
-    },
-    Err(err) => {
-      state.logger.error("get_items", &format!("get_vpks_in_folder returnd error: {}\nDirectory: {:?}", err, state.settings.gamedir.as_ref().unwrap()));
-      return Err(err)
-    }
-  };
-
-  if fileids.is_empty() {
-    return Ok(Vec::new());
-  }
-
-  debug!("unknown_ids = {}", unknown_ids.len());
-
-  let mut files: Vec<File> = Vec::with_capacity(fileids.len());
-  let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
-    Ok(details) => details,
-    Err(err) => { 
-      state.logger.error("get_items", &format!("Failed to get normal item details: {}\nIDS: {:?}", err, fileids));
-      return Err(err.to_string())
-    }
-  };
-  
-  let downloads = config::Downloads::load()?;
-  
-  for detail in details {
-    //TODO: 1. Check if file is in downloads list
-    //2. Check if file has an update
-    match downloads.get_download(&detail.publishedfileid) {
-      Some(download) => {
-        let item_type = 
-        if detail.time_updated > download.time_updated {
-          ItemType::Updateable
-        } else {
-          ItemType::Managed
-        };
-        files.push(File::Item {
-          item: detail,
-          item_type
-        });
-      },
-      None => {
-        files.push(File::Item {
-          item: detail,
-          item_type: ItemType::Unmanaged,
-        });
-      }
-    }
-  }
-
-  if let Ok(workshop_items) = get_workshop_items(&state) {
-    for item in workshop_items {
-      files.push(File::Item {
-        item,
-        item_type: ItemType::Workshop
-      })
-    }
-  }
-
-  
-  for unknown in unknown_ids {
-    files.push(File::Unknown {
-      item: unknown,
-      item_type: ItemType::Unknown,
-    });
-  }
-  Ok(files)
-}
-
-
-
-
-#[derive(Serialize, Deserialize, Clone)]
 struct UpdatePayload {
   publishedfileid: String,
   bytes_downloaded: usize,
@@ -225,25 +54,6 @@ struct UpdatePayload {
 struct ErrorPayload {
   publishedfileid: Option<String>,
   error: String
-}
-
-#[tauri::command]
-fn get_settings(state: tauri::State<Data>) -> config::Settings {
-  state.settings.clone()
-}
-
-#[tauri::command]
-fn save_settings(state: tauri::State<Data>, changed: config::Settings) -> Result<(), String> {
-  match config::Settings::load() {
-    Ok(mut settings) => {
-      settings.telemetry = changed.telemetry;
-      Ok(())
-    },
-    Err(err) => {
-      state.logger.error("save_settings", &format!("Could not load settings: {}", err.to_string()));
-      return Err(err.to_string());
-    }
-  }
 }
 
 #[tauri::command]
@@ -270,81 +80,10 @@ fn get_install_info(
 }
 
 #[tauri::command]
-fn import_addon(
-  state: tauri::State<'_, Data>,
-  item: steam_workshop_api::WorkshopItem,
-  is_workshop: bool
-) -> Result<(), String> {
-  let dest_folder = state.settings.gamedir.as_ref().unwrap();
-  let src_folder = if is_workshop { dest_folder.join("workshop") } else { dest_folder.clone() };
-
-  let filename = format!("{}.vpk", &item.publishedfileid);
-  let download = config::DownloadEntry::from_item(&item);
-
-  state.logger.debug("import_addon", &format!("Moving {} from {} to {}", 
-    filename, 
-    src_folder.to_string_lossy(), 
-    dest_folder.to_string_lossy()
-  ));
-
-  if is_workshop {
-    if let Err(err) = std::fs::rename(src_folder.join(&filename), dest_folder.join(&filename)) {
-      state.logger.error("import_addon", &format!("Moving import for {} error: {}", item.publishedfileid, err));
-      return Err(err.to_string());
-    }
-  }
-  let mut downloads = state.downloads.lock().expect("import_addon: Could not get downloads lock");
-  downloads.add_download(download);
-
-  if let Err(err) = downloads.save() {
-    state.logger.error("import_addon", &format!("Saving import for {} error: {}", item.publishedfileid, err));
-    return Err(err.to_string());
-  }
-  state.logger.logp(logger::LogLevel::NORMAL, "import_addon", &format!("Imported item \"{}\" (id {}). IsWorkshop: {}", &item.title, item.publishedfileid, is_workshop));
-  Ok(())
-}
-
-#[tauri::command]
-fn mark_addons_updated(
-  state: tauri::State<'_, Data>,
-  items: Vec<steam_workshop_api::WorkshopItem>
-) -> Result<u32, String> {
-  let mut downloads = state.downloads.lock().expect("import_addon: Could not get downloads lock");
-  let fileids: Vec<String> = items.into_iter().map(|item| item.publishedfileid).collect();
-  let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
-    Ok(details) => details,
-    Err(err) => { 
-      state.logger.error("mark_addons_updated", &format!("Failed to get item details: {}\nIDS: {:?}", err, fileids));
-      return Err(err.to_string())
-    }
-  };
-  let mut updated: u32 = 0;
-  for item in details {
-    if let Some(index) = downloads.get_id_index(&item.publishedfileid) {
-      let old = downloads.get(index).unwrap();
-      state.logger.logp(logger::LogLevel::NORMAL, "mark_addons_updated", &format!("Marked {} as updated ({} -> {})", &item.title, old.time_updated, item.time_updated));
-      downloads.set_download(index, config::DownloadEntry::from_item(&item));
-      updated += 1;
-    } else {
-      state.logger.error("mark_addons_updated", &format!("File is not managed: {}", item));
-    }
-  }
-  if updated > 0 {
-    if let Err(_) = downloads.save() {
-      return Err("Could not save downloads".to_owned())
-    } else {
-      return Ok(updated)
-    }
-  }
-  Ok(0)
-}
-
-
-#[tauri::command]
 async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
   let config = &state.settings;
   let mut dest = {
-    let fname = config.gamedir.as_ref().unwrap().join(format!("{}.vpk", item.publishedfileid));
+    let fname = config.lock().unwrap().get().gamedir.as_ref().unwrap().join(format!("{}.vpk", item.publishedfileid));
     std::fs::File::create(fname).expect("Could not create file")
   };
   let mut downloaded: usize = 0;
@@ -412,9 +151,12 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
 
 fn main() {
   env_logger::init();
-  if let Err(_) = config::Settings::load() {
+  WORKSHOP_ID_REGEX.set(Regex::new(r"[0-9]+").unwrap()).unwrap();
+  let mut settings = config::SettingsManager::new();
+  if let Ok(false) = settings.load() {
     let gamedir = util::prompt_game_dir();
-    let mut settings = config::Settings::new(Some(gamedir));
+    let mut settings = config::SettingsManager::new();
+    settings.get_mut().gamedir = Some(gamedir);
     if let Err(err) = settings.save() {
       panic!("Could not save settings: {}", err);
     }
@@ -433,15 +175,11 @@ fn main() {
     ))));
     //TODO: Check if settings exists, if not, create new. exit on error (or send err)
     let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
-    let settings = match config::Settings::load() {
-      Ok(config) => config,
-      Err(err) => {
-        panic!("Settings failure: {}", err);
-      }
-    };
+    let mut settings = config::SettingsManager::new();
+    settings.load().expect("failed to get settings");
     debug!("settings initialized");
-    if !settings.gamedir.as_ref().unwrap().exists() {
-      logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.gamedir.as_ref().unwrap().to_string_lossy()));
+    if !settings.get().gamedir.as_ref().unwrap().exists() {
+      logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.get().gamedir.as_ref().unwrap().to_string_lossy()));
       std::process::exit(1);
     }
     let downloads = match config::Downloads::load() {
@@ -452,13 +190,17 @@ fn main() {
     };
     debug!("downloads initialized");
 
-    if settings.telemetry {
+    if settings.get().telemetry {
       util::send_telemetry(&logger, downloads.size());
     }
 
+    let mut ws = SteamWorkshop::new();
+    ws.set_apikey(settings.get().steam_apikey.clone());
+
     app.manage(Data {
-      settings,
+      settings: Arc::new(Mutex::new(settings)),
       downloads: Arc::new(Mutex::new(downloads)),
+      workshop: ws,
       logger
     });
     debug!("done init.");
@@ -468,44 +210,14 @@ fn main() {
   })
   .invoke_handler(tauri::generate_handler![
     get_my_addons,
-    get_items, 
-    download_addon,
+    get_workshop_addons,
     get_settings,
     save_settings,
     close_splashscreen,
-    import_addon,
     get_install_info,
-    mark_addons_updated
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
 
 
-}
-
-fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
-  let wsfolder = &state.settings.gamedir.as_ref().unwrap().join("workshop");
-  if !wsfolder.exists() {
-    std::fs::create_dir(wsfolder).ok();
-    return Ok(vec![]);
-  }
-  let fileids = match Workshop::get_vpks_in_folder(wsfolder.as_path()) {
-      Ok(fileids) => fileids,
-      Err(err) => {
-      state.logger.error("get_workshop_items", &format!("Failed to get workshop items: {}", err));
-      return Err(err)
-      }
-  };
-
-  if fileids.is_empty() {
-      return Ok(Vec::new());
-  }
-
-  match Workshop::new(None).get_published_file_details(&fileids) {
-    Ok(details) => return Ok(details),
-    Err(err) => { 
-      state.logger.error("get_workshop_items", &format!("Failed to get workshop item details: {}", err));
-      return Err(err.to_string())
-    }
-  };
 }

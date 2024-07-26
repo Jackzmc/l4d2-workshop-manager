@@ -1,4 +1,5 @@
 use std::{path::PathBuf, io, fs};
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 #[cfg(debug_assertions)]
@@ -124,45 +125,61 @@ impl Downloads {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Settings {
     pub gamedir: Option<PathBuf>,
     pub version: Option<String>,
+    pub steam_apikey: Option<String>,
     pub telemetry: bool
 }
+pub struct SettingsManager {
+    config_path: PathBuf,
+    settings: Settings
+}
 
-#[allow(dead_code)]
-impl Settings {
-    pub fn new(path: Option<PathBuf>) -> Settings {
-        Settings {
-            gamedir: path,
-            version: None,
-            telemetry: true
+impl SettingsManager {
+    pub fn new() -> Self {
+        Self {
+            config_path: get_appdir().join("config.json"),
+            settings: Settings::default(),
         }
     }
-    pub fn load() -> Result<Settings, String> {
-        let path = Settings::get_path();
-        if !path.exists() {
-            return Err("No config exists".to_owned());
+    pub fn load(&mut self) -> Result<bool, String> {
+        debug!("Loading settings from {:?}", self.config_path);
+        if !self.config_path.exists() {
+            return Ok(false)
         }
-        match std::fs::File::open(path) {
-            Ok(file) => {
-                let reader = std::io::BufReader::new(file);
-                match serde_json::from_reader(reader) {
-                    Ok(json) => return Ok(json),
-                    Err(e) => Err(e.to_string())
-                }
-            },
-            Err(e) => return Err(e.to_string())
-        }
+        let content = fs::read_to_string(&self.config_path)
+            .map_err(|e| e.to_string())?;
+        self.settings = serde_json::from_str(&content)
+            .map_err(|e| e.to_string())?;
+        Ok(true)
     }
-    pub fn save(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.version = Some(env!("CARGO_PKG_VERSION").to_string());
-        fs::write(Settings::get_path(), serde_json::to_string(&self).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+
+    pub fn replace(&mut self, settings: Settings) {
+        self.settings = settings;
+    }
+
+    pub fn get_mut(&mut self) -> &mut Settings {
+        &mut self.settings
+    }
+
+    pub fn get(&self) -> &Settings {
+        &self.settings
+    }
+
+    pub fn get_clone(&self) -> Settings {
+        self.settings.clone()
+    }
+
+    pub fn save(&mut self) -> Result<(), String> {
+        self.settings.version = Some(env!("CARGO_PKG_VERSION").to_string());
+        let content = serde_json::to_string(&self.settings)
+            .map_err(|e| e.to_string())?;
+        debug!("saving:\n{}", content);
+        fs::write(&self.config_path, content)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
-
-    fn get_path() -> PathBuf {
-        get_appdir().join("config.json")
-    }
 }
+

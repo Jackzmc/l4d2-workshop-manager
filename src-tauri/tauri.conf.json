@@ -15,6 +15,14 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "window": {
+        "startDragging": true,
+        "maximize": true,
+        "unmaximize": true,
+        "unminimize": true,
+        "minimize": true,
+        "close": true
       }
     },
     "windows": [

@@ -1,5 +1,6 @@
 <template>
 <div class="mt-3">
+    <AddonModal v-if="showDetailAddon" :addon="showDetailAddon" @close="showDetailAddon = null" />
     <table class="table is-fullwidth">
         <thead>
             <tr>
@@ -19,15 +20,11 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for=" item in itemsFiltered" :key="item.publishedfileid">
+            <tr v-for=" item in itemsFiltered" :key="item.filename">
                 <td><b-checkbox v-model="selected[item.file_name]" /></td>
-                <td @click="selected[item.file_name] = !selected[item.file_name]">
-                    <a v-if="item.workshop_info" target="_blank"
-                        :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.workshop_info.publishedfileid"
-                        class="has-text-info">
-                        {{ item.workshop_info?.title ?? item.file_name }}
-                    </a>
-                    <span v-else>{{ item.file_name }}</span>
+                <td>
+                    <a @click="showDetails(item)">{{ item.workshop_info?.title ?? item.addon_data?.info?.title ?? item.file_name }}</a>
+                    <AddonTags :addon-data="item.addon_data" />
                 </td>
                 <td>{{ formatBytes( item.file_size ) }}</td>
                 <td>{{ formatDate( item.last_update_time ) }}</td>
@@ -59,15 +56,18 @@
 import { formatBytes, formatDate } from '@/js/utils'
 import { invoke } from '@tauri-apps/api/tauri'
 import Fuse from 'fuse.js'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import AddonModal from '../AddonModal.vue';
+import AddonTags from '../AddonTags.vue';
 
 const props = defineProps(["items"])
-const emit = defineEmits(["refreshItems"])
+const emit = defineEmits(["refresh"])
 
 let loading = ref(false)
 let active = ref(false)
 let selected = ref({})
 let search = ref({active: false, query: ""})
+let showDetailAddon = ref()
 
 const totalBytes = computed(() => {
     let bytes = 0;
@@ -136,6 +136,15 @@ function onSelectAll(state) {
         selected.value[item.publishedfileid] = state
     }
 } 
+function showDetails(item) {
+    console.debug(JSON.stringify(props.items))
+    showDetailAddon.value = item
+}
+
+onMounted(async() => {
+    const items = await invoke("get_my_addons")
+    emit("refresh", items)
+})
 
 </script>
 
