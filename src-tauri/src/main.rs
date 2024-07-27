@@ -4,7 +4,6 @@
 )]
 
 mod config;
-mod logger;
 mod util;
 mod commands;
 
@@ -14,10 +13,11 @@ use serde::{Deserialize, Serialize};
 use tauri::{Manager, State, Window};
 use futures::{StreamExt};
 use std::{io::Write, time::{UNIX_EPOCH}};
-use std::fs::DirEntry;
+use std::fs::{DirEntry, File};
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use flexi_logger::{FileSpec, Logger, WriteMode};
 use log::{debug, error};
 use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings};
 use crate::util::{WORKSHOP_ID_REGEX};
@@ -25,8 +25,6 @@ use crate::util::{WORKSHOP_ID_REGEX};
 pub struct Data {
   pub settings: Arc<Mutex<config::SettingsManager>>,
   pub workshop: SteamWorkshop,
-  pub downloads: Arc<Mutex<config::Downloads>>,
-  pub logger: logger::Logger
 }
 
 struct SplashscreenWindow(Arc<Mutex<Window>>);
@@ -68,18 +66,6 @@ fn close_splashscreen(
 }
 
 #[tauri::command]
-fn get_install_info(
-  state: tauri::State<'_, Data>,
-  id: String
-) -> Option<config::DownloadEntry> {
-  match state.downloads.lock().expect("get_install_info: Could not get downloads lock").get_download(&id) {
-    Some(download) => Some(download.clone()),
-    None => None
-  }
-
-}
-
-#[tauri::command]
 async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
   let config = &state.settings;
   let mut dest = {
@@ -87,7 +73,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
     std::fs::File::create(fname).expect("Could not create file")
   };
   let mut downloaded: usize = 0;
-  state.logger.logp(logger::LogLevel::NORMAL, "download_addons", &format!("Starting download of file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
+  debug!("Starting download of file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size);
   match reqwest::Client::new()
     .get(&item.file_url)
     .header("User-Agent", "L4D2-Workshop-Downloader")
@@ -101,8 +87,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         match result {
           Ok(chunk) => {
             if let Err(err) = dest.write(&chunk) {
-              state.logger.error("download_addon", &format!("Write error for ID {}: {}", item.publishedfileid, err));
-              println!("[{}] Write Error: {}", &item.publishedfileid, err);
+              error!("[{}] Write Error: {}", &item.publishedfileid, err);
               break;
             }
             downloaded += chunk.len();
@@ -121,8 +106,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
               publishedfileid: Some(item.publishedfileid.clone()),
               error: err.to_string()
             }).ok();
-            state.logger.error("download_addon", &format!("Chunk failure for ID {}: {}", item.publishedfileid, err));
-            println!("Download for {} failed:\n{}", item.title, &err); 
+            error!("Download for {} failed:\n{}", item.title, &err);
             return Err(err.to_string())
           }
         }
@@ -133,13 +117,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
         bytes_downloaded: downloaded,
         complete: true
       }).ok();
-      let entry = config::DownloadEntry::from_item(&item);
-      let mut downloads = state.downloads.lock().expect("download_addon: Could not get downloads lock");
-      match downloads.get_id_index(&item.publishedfileid) {
-        Some(index) => downloads.set_download(index, entry),
-        None => downloads.add_download(entry)
-      }
-      state.logger.logp(logger::LogLevel::NORMAL, "download_addon", &format!("Downloaded file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size));
+      debug!("Downloaded file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size);
       return Ok(())
     },
     Err(err) => {
@@ -149,8 +127,21 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
   }
 }
 
+fn setup_logging() {
+  let _logger = Logger::try_with_str(format!("warn, {}=debug", env!("CARGO_PKG_NAME"))).unwrap()
+      .log_to_file(FileSpec::default()
+          .directory( PathBuf::from("./logs"))
+          .basename("l4d2-addon-manager")
+          // .use_timestamp(false)
+          // .suppress_timestamp()
+      )
+      .log_to_stdout()
+      .write_mode(WriteMode::BufferAndFlush)
+      .start().unwrap();
+}
+
 fn main() {
-  env_logger::init();
+  setup_logging();
   WORKSHOP_ID_REGEX.set(Regex::new(r"[0-9]{4,}").unwrap()).unwrap();
   let mut settings = config::SettingsManager::new();
   if let Ok(false) = settings.load() {
@@ -174,24 +165,16 @@ fn main() {
      main
     ))));
     //TODO: Check if settings exists, if not, create new. exit on error (or send err)
-    let logger = logger::Logger::new(config::get_appdir().join("downloader.log"));
     let mut settings = config::SettingsManager::new();
     settings.load().expect("failed to get settings");
     debug!("settings initialized");
     if !settings.get().gamedir.as_ref().unwrap().exists() {
-      logger.error("setup", &format!("Specified game directory folder \"{}\" does not exist", settings.get().gamedir.as_ref().unwrap().to_string_lossy()));
+      error!("Specified game directory folder \"{}\" does not exist", settings.get().gamedir.as_ref().unwrap().to_string_lossy());
       std::process::exit(1);
     }
-    let downloads = match config::Downloads::load() {
-      Ok(downloads) => downloads,
-      Err(_e) => {
-        config::Downloads::new()
-      }
-    };
-    debug!("downloads initialized");
 
     if settings.get().telemetry {
-      util::send_telemetry(&logger, downloads.size());
+      // util::send_telemetry(&logger, downloads.size());
     }
 
     let mut ws = SteamWorkshop::new();
@@ -199,9 +182,7 @@ fn main() {
 
     app.manage(Data {
       settings: Arc::new(Mutex::new(settings)),
-      downloads: Arc::new(Mutex::new(downloads)),
       workshop: ws,
-      logger
     });
     debug!("done init.");
     app.get_window("splashscreen").unwrap().hide().ok();
@@ -215,7 +196,6 @@ fn main() {
     get_settings,
     save_settings,
     close_splashscreen,
-    get_install_info,
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");

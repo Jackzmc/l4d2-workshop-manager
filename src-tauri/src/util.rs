@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use sourcepak::common::file::VPKFileReader;
 use sourcepak::common::format::VPKTree;
 use steam_workshop_api::{SteamWorkshop, WorkshopItem};
-use crate::{logger, util};
+use crate::{util};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct AddonEntry {
@@ -125,7 +125,6 @@ pub fn get_mission_data(file: &mut File, vpk: &VPKVersion1) -> Option<MissionInf
             file.seek(SeekFrom::Current(entry.entry_offset as i64)).unwrap();
             let buf = file.read_bytes(entry.entry_length as usize).unwrap();
             let content = String::from_utf8_lossy(&buf);
-            debug!("found mission file = {:?}", path);
             return match keyvalues_serde::from_str::<MissionInfo>(&content) {
                 Ok(mi) => Some(mi),
                 Err(e) => {
@@ -161,33 +160,6 @@ pub fn prompt_game_dir() -> PathBuf {
     } else {
         eprintln!("Could not open file dialog");
         std::process::exit(1);
-    }
-}
-
-pub fn send_telemetry(logger: &logger::Logger, downloads: usize) {
-    return;
-    // Server doesn't work:
-    match reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(3))
-        .build()
-    {
-        Ok(client) => {
-        if let Err(err) = client
-            .get("https://telemetry.jackz.me/track.php")
-            .query(&[
-            ("item", "l4d2-workshop-downloader"),
-            ("v", env!("CARGO_PKG_VERSION")),
-            ("os", std::env::consts::OS),
-            ("arch", std::env::consts::ARCH),
-            ("downloaded", &downloads.to_string())
-            ])
-            .send() {
-            logger.warn("send_telemetry", &format!("Failed to send telemetry: {}", err.to_string()));
-        }
-        },
-        Err(err) => {
-        logger.warn("send_telemetry", &format!("Failed to setup sending telemetry: {}", err.to_string()));
-        }
     }
 }
 
@@ -229,7 +201,7 @@ pub fn get_workshop_data(ws: &SteamWorkshop, entries: &[DirEntry]) -> HashMap<u3
     }
 
     // Steam API only accepts 100 entries at a time
-    while(pending_workshop_ids.len() > 0) {
+    while pending_workshop_ids.len() > 0 {
         // let items = steam_workshop_api::Workshop::
         let end = pending_workshop_ids.len().min(100);
         let slice: Vec<u32> = pending_workshop_ids.drain(0..end).collect();
@@ -295,7 +267,6 @@ pub fn find_workshop_id_in_str(file_name: &str) -> Option<u32> {
 }
 pub fn get_cached_workshop_info(path: &Path, workshop_id: u32) -> Option<WorkshopItem> {
     let path = path.with_file_name(format!("{}_ws.json", workshop_id));
-    debug!("checking for {} at {:?}", workshop_id, path);
     match std::fs::read_to_string(&path) {
         Ok(content) => {
             serde_json::from_str(&content).ok()
