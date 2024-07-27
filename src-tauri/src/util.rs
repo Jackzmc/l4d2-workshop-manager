@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::{DirEntry, File};
-use std::io::{ErrorKind, Read, Seek, SeekFrom};
+use std::io::{ErrorKind, Seek, SeekFrom};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -9,9 +9,7 @@ use log::{debug, error, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sourcepak::common::file::VPKFileReader;
-use sourcepak::common::format::VPKTree;
 use steam_workshop_api::{SteamWorkshop, WorkshopItem};
-use crate::{util};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct AddonEntry {
@@ -178,12 +176,12 @@ fn get_vpks_in_folder(path: &Path) -> Result<Vec<DirEntry>, String> {
     return Ok(files);
 }
 
-struct WorkshopResult {
+pub(crate) struct WorkshopResult {
     item: WorkshopItem,
     cached: bool
 }
 
-pub fn get_workshop_data(ws: &SteamWorkshop, entries: &[DirEntry]) -> HashMap<u32, WorkshopResult> {
+pub(crate) fn get_workshop_data(ws: &SteamWorkshop, entries: &[DirEntry]) -> HashMap<u32, WorkshopResult> {
     let mut pending_workshop_ids: Vec<u32> = vec![];
     let mut results: HashMap<u32, WorkshopResult> = HashMap::with_capacity(entries.len());
     for entry in entries {

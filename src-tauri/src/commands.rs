@@ -20,7 +20,6 @@ pub fn get_workshop_addons(state: tauri::State<'_, Data>) -> Result<Vec<util::Ad
 
 #[tauri::command]
 pub fn get_latest_workshop_info(state: tauri::State<'_, Data>, publishedfileid: u32) -> Result<WorkshopItem, String> {
-    let settings = state.settings.lock().unwrap();
     let ws = &state.workshop.clone();
     let entries = vec![publishedfileid.to_string()];
     debug!("ws.get_published_file_details {:?}", entries);

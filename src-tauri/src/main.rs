@@ -7,14 +7,12 @@ mod config;
 mod util;
 mod commands;
 
-use steam_workshop_api::{SteamWorkshop, WorkshopItem};
+use steam_workshop_api::{SteamWorkshop};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State, Window};
 use futures::{StreamExt};
-use std::{io::Write, time::{UNIX_EPOCH}};
-use std::fs::{DirEntry, File};
-use std::os::unix::fs::MetadataExt;
+use std::{io::Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use flexi_logger::{FileSpec, Logger, WriteMode};
