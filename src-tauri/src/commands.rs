@@ -1,4 +1,5 @@
 use log::{debug, error};
+use steam_workshop_api::WorkshopItem;
 use crate::{config, Data, util};
 
 #[tauri::command]
@@ -15,6 +16,24 @@ pub fn get_workshop_addons(state: tauri::State<'_, Data>) -> Result<Vec<util::Ad
     let path = settings.get().gamedir.as_ref().unwrap().join("workshop");
     let ws = &state.workshop.clone();
     util::get_addons(&ws, &path)
+}
+
+#[tauri::command]
+pub fn get_latest_workshop_info(state: tauri::State<'_, Data>, publishedfileid: u32) -> Result<WorkshopItem, String> {
+    let settings = state.settings.lock().unwrap();
+    let ws = &state.workshop.clone();
+    let entries = vec![publishedfileid.to_string()];
+    debug!("ws.get_published_file_details {:?}", entries);
+    let mut latest_info = ws.get_published_file_details(&entries)
+        .map_err(|e| e.to_string())?;
+    if latest_info.len() == 0 {
+        // TODO: mark this in the cache, that it's deleted?
+        return Err("Could not find workshop info, may have been deleted or made private".to_string());
+    }
+    debug!("got latest info for {}", publishedfileid);
+    let latest_info = latest_info.remove(0);
+    Ok(latest_info)
+
 }
 
 #[tauri::command]

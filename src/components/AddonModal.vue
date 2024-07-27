@@ -71,13 +71,14 @@
                 </tr>
                 <tr>
                     <th>Up To Date</th>
-                    <td>{{ uptoDateState }}</td>
+                    <td>{{ uptoDateState ? 'Yes' : 'No' }}</td>
                 </tr>
             </table>
         </section>
         <footer class="modal-card-foot">
             <div class="buttons">
-                <button class="button is-info">Check for Updates</button>
+                <b-button type="is-info" :loading="fetchingWorkshopInfo" v-if="props.addon.workshop_info && uptoDateState" @click="getLatestWorkshop">Check for Updates</b-button>
+                <button class="button is-info" v-else-if=" props.addon.workshop_info && !uptoDateState ">Update</button>
                 <button class="button is-danger">Delete</button>
                 <button class="button is-warning">Disable</button>
 
@@ -89,12 +90,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { formatBytes, formatDate } from '../js/utils';
 import AddonTags from './AddonTags.vue';
+import { invoke } from '@tauri-apps/api';
 
 const props = defineProps( ['addon'] )
-const emit = defineEmits(["close"])
+const emit = defineEmits( ["close", "refresh"] )
+
+let fetchingWorkshopInfo = ref(false)
 
 const addonName = computed(() => {
     return props.addon.workshop_info?.title ?? props.addon.addon_info?.title ?? props.addon.filename 
@@ -119,7 +123,24 @@ const workshopLink = computed( () => {
 
 const uptoDateState = computed( () => {
     if ( !props.addon.workshop_info ) return "?"
-    return Number(props.addon.workshop_info.time_updated) <= Number(props.addon.last_update_time) ? 'Yes' : 'No' 
+    return Number(props.addon.workshop_info.time_updated) <= Number(props.addon.last_update_time)
 } )
+
+async function getLatestWorkshop() {
+    fetchingWorkshopInfo.value = true
+    try {
+        const result = await invoke( "get_latest_workshop_info", {
+            publishedfileid: Number( props.addon.workshop_info.publishedfileid )
+        } )
+        if ( result ) {
+            emit( "refresh", result )
+        }
+        console.log(result)
+    } catch ( err ) {
+        console.error("failed", err)
+    } finally {
+        fetchingWorkshopInfo.value = false
+    }
+}
 
 </script>

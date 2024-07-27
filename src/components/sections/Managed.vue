@@ -1,6 +1,7 @@
 <template>
 <div class="mt-3">
-    <AddonModal v-if="showDetailAddon" :addon="showDetailAddon" @close="showDetailAddon = null" />
+    <!-- TODO: dont do full refresh -->
+    <AddonModal v-if=" showDetailAddon " :addon="showDetailAddon" @close="showDetailAddon = null" @refresh="emit( 'refresh' )" />
     <table class="table is-fullwidth">
         <thead>
             <tr>

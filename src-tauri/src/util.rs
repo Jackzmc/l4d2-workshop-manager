@@ -13,11 +13,6 @@ use sourcepak::common::format::VPKTree;
 use steam_workshop_api::{SteamWorkshop, WorkshopItem};
 use crate::{logger, util};
 
-pub struct Addons {
-    pub enabled: Vec<String>,
-    pub disabled: Vec<String>
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct AddonEntry {
     file_name: String,
@@ -300,6 +295,7 @@ pub fn find_workshop_id_in_str(file_name: &str) -> Option<u32> {
 }
 pub fn get_cached_workshop_info(path: &Path, workshop_id: u32) -> Option<WorkshopItem> {
     let path = path.with_file_name(format!("{}_ws.json", workshop_id));
+    debug!("checking for {} at {:?}", workshop_id, path);
     match std::fs::read_to_string(&path) {
         Ok(content) => {
             serde_json::from_str(&content).ok()

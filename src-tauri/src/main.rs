@@ -19,7 +19,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use log::{debug, error};
-use crate::commands::{get_my_addons, get_settings, get_workshop_addons, save_settings};
+use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings};
 use crate::util::{WORKSHOP_ID_REGEX};
 
 pub struct Data {
@@ -209,6 +209,7 @@ fn main() {
     Ok(())
   })
   .invoke_handler(tauri::generate_handler![
+    get_latest_workshop_info,
     get_my_addons,
     get_workshop_addons,
     get_settings,
