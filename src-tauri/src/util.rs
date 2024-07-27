@@ -81,13 +81,9 @@ pub struct MissionInfo {
 }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MissionModes {
-    coop: Option<MissionChapters>,
-    versus: Option<MissionChapters>,
-    survival: Option<MissionChapters>,
-}
-#[derive(Serialize, Deserialize, Clone)]
-pub struct MissionChapters {
-    chapters: Vec<MissionChapter>
+    coop: Option<HashMap<u64, MissionChapter>>,
+    versus: Option<HashMap<u64, MissionChapter>>,
+    survival: Option<HashMap<u64, MissionChapter>>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MissionChapter {
@@ -130,11 +126,18 @@ pub fn get_addon_data(path: &Path) -> Result<AddonData, String> {
 
 pub fn get_mission_data(file: &mut File, vpk: &VPKVersion1) -> Option<MissionInfo> {
     for (path, entry) in &vpk.tree.files {
-        if path.starts_with("missions/") {
+        if path.starts_with("missions/") && path.ends_with(".txt") {
             file.seek(SeekFrom::Current(entry.entry_offset as i64)).unwrap();
             let buf = file.read_bytes(entry.entry_length as usize).unwrap();
             let content = String::from_utf8_lossy(&buf);
-            return keyvalues_serde::from_str(&content).ok()
+            debug!("found mission file = {:?}", path);
+            return match keyvalues_serde::from_str::<MissionInfo>(&content) {
+                Ok(mi) => Some(mi),
+                Err(e) => {
+                    error!("Failed to parse mission file = {}", e);
+                    None
+                }
+            }
         }
     }
     None
@@ -208,9 +211,14 @@ fn get_vpks_in_folder(path: &Path) -> Result<Vec<DirEntry>, String> {
     return Ok(files);
 }
 
-pub fn get_workshop_data(entries: &[&DirEntry]) -> HashMap<u32, WorkshopItem> {
+struct WorkshopResult {
+    item: WorkshopItem,
+    cached: bool
+}
+
+pub fn get_workshop_data(ws: &SteamWorkshop, entries: &[DirEntry]) -> HashMap<u32, WorkshopResult> {
     let mut pending_workshop_ids: Vec<u32> = vec![];
-    let mut results: HashMap<u32, WorkshopItem> = HashMap::with_capacity(entries.len());
+    let mut results: HashMap<u32, WorkshopResult> = HashMap::with_capacity(entries.len());
     for entry in entries {
         let path = entry.path();
 
@@ -218,7 +226,7 @@ pub fn get_workshop_data(entries: &[&DirEntry]) -> HashMap<u32, WorkshopItem> {
         if workshop_id.is_none() { continue; }
         let workshop_id = workshop_id.unwrap();
         if let Some(item) = get_cached_workshop_info(&path, workshop_id) {
-            results.insert(workshop_id, item);
+            results.insert(workshop_id, WorkshopResult { item, cached: true });
         } else {
             // Queue up for bulk fetching
             pending_workshop_ids.push(workshop_id);
@@ -228,7 +236,20 @@ pub fn get_workshop_data(entries: &[&DirEntry]) -> HashMap<u32, WorkshopItem> {
     // Steam API only accepts 100 entries at a time
     while(pending_workshop_ids.len() > 0) {
         // let items = steam_workshop_api::Workshop::
-        let slice: Vec<u32> = pending_workshop_ids.drain(0..100).collect();
+        let end = pending_workshop_ids.len().min(100);
+        let slice: Vec<u32> = pending_workshop_ids.drain(0..end).collect();
+        let slice: Vec<String> = slice.iter().map(|d| d.to_string()).collect();
+        debug!("slice = {}", slice.join(" "));
+        match ws.get_published_file_details(&slice) {
+            Ok(items) => {
+                for item in items {
+                    results.insert(item.publishedfileid.parse().unwrap(), WorkshopResult { item, cached: false });
+                }
+            },
+            Err(e) => {
+                error!("get_workshop_data error: {}", e)
+            }
+        }
 
     }
 
@@ -236,6 +257,7 @@ pub fn get_workshop_data(entries: &[&DirEntry]) -> HashMap<u32, WorkshopItem> {
 }
 pub fn get_addons(workshop: &SteamWorkshop, dir: &Path) -> Result<Vec<AddonEntry>, String> {
     let entries = get_vpks_in_folder(dir)?;
+    let mut workshop_record = get_workshop_data(workshop, &entries);
     let mut files: Vec<AddonEntry> = vec![];
 
 
@@ -245,13 +267,25 @@ pub fn get_addons(workshop: &SteamWorkshop, dir: &Path) -> Result<Vec<AddonEntry
 
 
         let addon_data: Option<AddonData> = get_addon_data(&path).ok();
+        let workshop_info = find_workshop_id_in_str(&path.file_stem().unwrap().to_string_lossy())
+            .and_then(|id| workshop_record.remove(&id));
+        // If item was not cached, then save to file
+        if let Some(data) = &workshop_info {
+            if !data.cached {
+                let content = serde_json::to_string(&data.item).unwrap();
+                let mut path = path.clone();
+                path.set_file_name(format!("{}_ws.json", data.item.publishedfileid));
+                std::fs::write(path, content).ok();
+            }
+        }
+        let workshop_info = workshop_info.map(|data| data.item);
         let file = AddonEntry {
             file_name: entry.file_name().to_str().unwrap().to_string(),
             file_size: meta.size(),
             last_update_time: meta.modified().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
             create_time: meta.created().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
 
-            workshop_info: None, // TODO:
+            workshop_info,
             addon_data
         };
 
@@ -265,7 +299,7 @@ pub fn find_workshop_id_in_str(file_name: &str) -> Option<u32> {
         .map(|c| c[0].parse().unwrap())
 }
 pub fn get_cached_workshop_info(path: &Path, workshop_id: u32) -> Option<WorkshopItem> {
-    let path = path.with_file_name(format!("ws_{}.json", workshop_id));
+    let path = path.with_file_name(format!("{}_ws.json", workshop_id));
     match std::fs::read_to_string(&path) {
         Ok(content) => {
             serde_json::from_str(&content).ok()
@@ -278,35 +312,3 @@ pub fn get_cached_workshop_info(path: &Path, workshop_id: u32) -> Option<Worksho
         }
     }
 }
-pub fn get_addon_files(dir: &std::path::Path) -> Result<Addons, String> {
-    let mut entries: Vec<PathBuf> = match std::fs::read_dir(dir) {
-        Ok(file) => {
-            match file.map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, std::io::Error>>() {
-                Ok(files) => files,
-                Err(err) => return Err(err.to_string())
-            }
-        },
-        Err(err) => return Err(err.to_string())
-    };
-    entries.sort();
-
-    let mut enabled: Vec<String> = Vec::with_capacity(entries.len());
-    let mut disabled: Vec<String> = Vec::new();
-
-    for entry in entries {
-        if !entry.is_dir() {
-        match entry.extension().and_then(std::ffi::OsStr::to_str) {
-            Some("vpk") => enabled.push(entry.file_stem().unwrap().to_str().unwrap().to_owned()),
-            Some("disabled") => disabled.push(entry.file_stem().unwrap().to_str().unwrap().to_owned()),
-            _ => ()
-        }
-        }
-    }
-
-    Ok(Addons {
-        enabled,
-        disabled
-    })
-}
-

@@ -127,7 +127,6 @@ async function getItems() {
   }
   try {
     const items = await invoke('get_my_addons')
-    console.log(items)
   }catch(error) {
     error.value = error.message
   }
@@ -142,7 +141,6 @@ function onItems( entries: any[] ) {
 
 onBeforeMount(async () => {
   settings.value = await invoke( "get_settings" )
-  console.log(settings.value)
 })
 
 onMounted(async () => {

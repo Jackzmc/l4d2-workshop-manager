@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use log::{debug, error};
 use crate::commands::{get_my_addons, get_settings, get_workshop_addons, save_settings};
-use crate::util::{AddonInfo, WORKSHOP_ID_REGEX};
+use crate::util::{WORKSHOP_ID_REGEX};
 
 pub struct Data {
   pub settings: Arc<Mutex<config::SettingsManager>>,
@@ -151,7 +151,7 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
 
 fn main() {
   env_logger::init();
-  WORKSHOP_ID_REGEX.set(Regex::new(r"[0-9]+").unwrap()).unwrap();
+  WORKSHOP_ID_REGEX.set(Regex::new(r"[0-9]{4,}").unwrap()).unwrap();
   let mut settings = config::SettingsManager::new();
   if let Ok(false) = settings.load() {
     let gamedir = util::prompt_game_dir();

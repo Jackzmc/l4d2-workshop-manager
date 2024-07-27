@@ -3241,11 +3241,12 @@ dependencies = [
 
 [[package]]
 name = "steam-workshop-api"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fcc0800f93b309121b687c793dd76a76cec806988eb196ef7037de975abcb49"
+checksum = "53c60d3252322f0ae5ed88a80810c46f750b5cfba8605b4406098c8d6a279a9d"
 dependencies = [
  "lazy_static",
+ "log",
  "reqwest 0.12.5",
  "serde",
  "serde_json",

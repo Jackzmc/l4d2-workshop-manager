@@ -24,10 +24,10 @@
                 <td><b-checkbox v-model="selected[item.file_name]" /></td>
                 <td>
                     <a @click="showDetails(item)">{{ item.workshop_info?.title ?? item.addon_data?.info?.title ?? item.file_name }}</a>
-                    <AddonTags :addon-data="item.addon_data" />
+                    <AddonTags :addon="item" />
                 </td>
                 <td>{{ formatBytes( item.file_size ) }}</td>
-                <td>{{ formatDate( item.last_update_time ) }}</td>
+                <td>{{ formatDate( Number(item.last_update_time) ) }}</td>
             </tr>
         </tbody>
         <tfoot>
@@ -137,13 +137,19 @@ function onSelectAll(state) {
     }
 } 
 function showDetails(item) {
-    console.debug(JSON.stringify(props.items))
     showDetailAddon.value = item
 }
 
+let lastUpdateTime
+const MIN_UPDATE_INTERVAL = 1000 * 60
 onMounted(async() => {
-    const items = await invoke("get_my_addons")
-    emit("refresh", items)
+    if(Date.now() - lastUpdateTime > MIN_UPDATE_INTERVAL) {
+        invoke("get_my_addons")
+            .then(items => {
+                emit("refresh", items)
+                lastUpdateTime = Date.now()
+            })
+    }
 })
 
 </script>

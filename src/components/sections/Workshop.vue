@@ -24,10 +24,10 @@
                 <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
                 <td>
                     <a @click="showDetails( item )">{{ item.workshop_info?.title ?? item.addon_data?.info?.title ?? item.file_name }}</a>
-                    <AddonTags :addon-data="item.addon_data" />
+                    <AddonTags :addon="item" />
                 </td>
                 <td>{{ formatBytes( item.file_size ) }}</td>
-                <td>{{ formatDate( item.time_updated ) }}</td>
+                <td>{{ formatDate( Number( item.last_update_time ) )  }}</td>
             </tr>
         </tbody>
         <tfoot>
@@ -57,7 +57,7 @@
 import { formatBytes, formatDate } from '@/js/utils'
 import { invoke } from '@tauri-apps/api/tauri'
 import Fuse from 'fuse.js'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import AddonModal from '../AddonModal.vue';
 import AddonTags from '../AddonTags.vue';
 
@@ -139,13 +139,19 @@ function onSelectAll(state) {
 } 
 
 function showDetails(item) {
-    console.debug(JSON.stringify(props.items))
     showDetailAddon.value = item
 }
 
+let lastUpdateTime
+const MIN_UPDATE_INTERVAL = 1000 * 60
 onMounted(async() => {
-    const items = await invoke("get_workshop_addons")
-    emit("refresh", items)
+    if(Date.now() - lastUpdateTime > MIN_UPDATE_INTERVAL) {
+        invoke("get_workshop_addons")
+            .then(items => {
+                emit("refresh", items)
+                lastUpdateTime = Date.now()
+            })
+    }
 })
 
 </script>
