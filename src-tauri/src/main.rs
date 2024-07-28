@@ -15,8 +15,8 @@ use futures::{StreamExt};
 use std::{io::Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use flexi_logger::{FileSpec, Logger, WriteMode};
-use log::{debug, error};
+use flexi_logger::{colored_default_format, FileSpec, Logger, WriteMode};
+use log::{debug, error, info, log, trace, warn};
 use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings};
 use crate::util::{WORKSHOP_ID_REGEX};
 
@@ -126,7 +126,9 @@ async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: ste
 }
 
 fn setup_logging() {
-  let _logger = Logger::try_with_str(format!("warn, {}=debug", env!("CARGO_PKG_NAME"))).unwrap()
+  let _logger = Logger::try_with_env_or_str(format!("warn, l4d2_addon_manager=debug")).unwrap()
+      .set_palette("168;226;81;34;38".to_string()) // error, warn, info, debug, trace
+      .format_for_stdout(colored_default_format)
       .log_to_file(FileSpec::default()
           .directory( PathBuf::from("./logs"))
           .basename("l4d2-addon-manager")
@@ -136,6 +138,11 @@ fn setup_logging() {
       .log_to_stdout()
       .write_mode(WriteMode::BufferAndFlush)
       .start().unwrap();
+  error!("error");
+  warn!("warn");
+  debug!("debug");
+  info!("info");
+  trace!("trace");
 }
 
 fn main() {

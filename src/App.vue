@@ -20,19 +20,6 @@
             </span>
             <span class="tag is-white has-text-black ml-2 is-pulled-right" v-if="files[data.id]">{{ files[data.id].length }}</span>
           </a>
-          <a :class="['panel-block', { 'panel-active': selected?.id == 'new' }]" @click="openSection( 'new' )">
-            <span class="icon-text">
-              <span class="icon has-text-success">
-                <font-awesome-icon icon="plus" aria-hidden="true" />
-              </span>
-              <span>Add New</span>
-            </span>
-          </a>
-          <!-- <div class="panel-block" @click="getItems">
-            <b-button type="is-info" outlined expanded :disabled="loading" :loading="loading">
-              Refresh
-            </b-button>
-          </div> -->
          <p class="has-text-centered mt-1"><em>v{{ APP_VERSION }} build #{{ BUILD_NUMBER }}</em></p>
         </nav>
       </div>
@@ -92,13 +79,6 @@ let files = ref<Record<string, any>>({
   workshop: [],
   managed: []
 })
-// const MAIN_SECTIONS = {
-//   Updateable,
-//   Managed,
-//   Unmanaged,
-//   Workshop,
-//   Unknown,
-// }
 
 let selected = ref<{ id: string, component: any }>()
 let loading = ref(false)
@@ -120,19 +100,6 @@ function openSection(data: any) {
   selected.value = data
 }
 
-async function getItems() {
-  loading.value = true
-  for(const category in files.value) {
-    files.value[category] = []
-  }
-  try {
-    const items = await invoke('get_my_addons')
-  }catch(error) {
-    error.value = error.message
-  }
-  loading.value = false
-}
-
 function onItems( entries: any[] ) {
   if ( !selected.value ) return
   console.debug( "got items for", selected.value?.id )
@@ -144,7 +111,6 @@ onBeforeMount(async () => {
 })
 
 onMounted(async () => {
-  // const items = await invoke("get_my_addons")
   files.value.managed = await invoke( "get_my_addons" )
   files.value.workshop = await invoke("get_workshop_addons")
 })

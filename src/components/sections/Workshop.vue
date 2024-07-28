@@ -1,7 +1,7 @@
 <template>
 <div class="mt-3">
     <!-- TODO: dont do full refresh -->
-    <AddonModal v-if=" showDetailAddon " :addon="showDetailAddon" @close="showDetailAddon = null" @refresh="emit('refresh')" />
+    <AddonModal v-if=" showDetailAddon " :addon="showDetailAddon" @close="showDetailAddon = null" @refresh="refreshAddons" />
     <table class="table is-fullwidth">
         <thead>
             <tr>
@@ -147,12 +147,13 @@ let lastUpdateTime
 const MIN_UPDATE_INTERVAL = 1000 * 60
 onMounted(async() => {
     if(Date.now() - lastUpdateTime > MIN_UPDATE_INTERVAL) {
-        invoke("get_workshop_addons")
-            .then(items => {
-                emit("refresh", items)
-                lastUpdateTime = Date.now()
-            })
+        refreshAddons
     }
 })
 
+async function refreshAddons() {
+    const items = await invoke("get_workshop_addons")
+    emit("refresh", items)
+    lastUpdateTime = Date.now()
+}
 </script>

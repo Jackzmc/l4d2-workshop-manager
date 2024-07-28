@@ -168,8 +168,8 @@ fn get_vpks_in_folder(path: &Path) -> Result<Vec<DirEntry>, String> {
         let entry = entry.map_err(|e| e.to_string())?;
         let file_name = entry.file_name();
         let file_name = file_name.to_str().expect("bad filename");
-        if file_name.ends_with(".vpk") {
-            files.push(entry)
+        if file_name.ends_with(".vpk") || file_name.ends_with(".vpk.disabled") {
+            files.push(entry);
         }
     }
     debug!("found {} vpks in {:?}", files.len(), path);
@@ -229,7 +229,6 @@ pub fn get_addons(workshop: &SteamWorkshop, dir: &Path) -> Result<Vec<AddonEntry
     for entry in entries {
         let meta = entry.metadata().unwrap();
         let path = entry.path();
-
 
         let addon_data: Option<AddonData> = get_addon_data(&path).ok();
         let workshop_info = find_workshop_id_in_str(&path.file_stem().unwrap().to_string_lossy())

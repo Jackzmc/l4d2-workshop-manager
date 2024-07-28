@@ -11,6 +11,10 @@
             <h4 class="title is-4">File Info</h4>
             <table class="table is-striped is-fullwidth">
                 <tr>
+                    <th>Enabled</th>
+                    <td>{{ isDisabled ? 'No' : 'Yes' }}</td>
+                </tr>
+                <tr>
                     <th>File Name</th>
                     <td>{{ props.addon.file_name }}</td>
                 </tr>
@@ -79,8 +83,8 @@
             <div class="buttons">
                 <b-button type="is-info" :loading="fetchingWorkshopInfo" v-if="props.addon.workshop_info && uptoDateState" @click="getLatestWorkshop">Check for Updates</b-button>
                 <button class="button is-info" v-else-if=" props.addon.workshop_info && !uptoDateState ">Update</button>
-                <button class="button is-danger">Delete</button>
-                <button class="button is-warning">Disable</button>
+                <button class="button is-danger" @click="deleteAddon">Delete</button>
+                <button class="button is-warning" @click="toggleAddon"> {{ isDisabled ? 'Enable' : 'Disable' }}</button>
 
                 <button class="button" @click="emit( 'close' )">Close</button>
             </div>
@@ -91,7 +95,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { formatBytes, formatDate } from '../js/utils';
+import { formatBytes, formatDate, sendToast } from '../js/utils';
 import AddonTags from './AddonTags.vue';
 import { invoke } from '@tauri-apps/api';
 
@@ -115,6 +119,10 @@ const chapters = computed( () => {
     return chapters
 } )
 
+const isDisabled = computed( () => {
+    return props.addon.file_name.endsWith(".disabled")
+})
+
 const workshopLink = computed( () => {
     const id = props.addon.workshop_info?.publishedfileid
     if(!id) return
@@ -135,12 +143,33 @@ async function getLatestWorkshop() {
         if ( result ) {
             emit( "refresh", result )
         }
-        console.log(result)
+        sendToast( {
+            type: "is-success",
+            message: "Updated workshop information"
+        })
     } catch ( err ) {
-        console.error("failed", err)
+        console.error( "failed", err )
+        sendToast( {
+            type: "is-danger",
+            message: "<b>Fetching workshop information failed: </b>" + err.message
+        } )
     } finally {
         fetchingWorkshopInfo.value = false
     }
+}
+
+async function toggleAddon() {
+    await invoke( "toggle_addon", { file_name: props.addon.file_name } )
+   
+}
+async function deleteAddon() {
+    await invoke( "delete_addon", { file_name: props.addon.file_name } )
+    sendToast( {
+        type: "is-danger",
+        message: `Deleted addon ${props.addon.file_name}`
+    } )
+    emit("close")
+    // awa
 }
 
 </script>
