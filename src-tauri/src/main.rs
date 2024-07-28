@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use flexi_logger::{colored_default_format, FileSpec, Logger, WriteMode};
 use log::{debug, error, info, log, trace, warn};
-use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings};
+use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings, search_workshop};
 use crate::util::{WORKSHOP_ID_REGEX};
 
 pub struct Data {
@@ -41,14 +41,15 @@ enum ItemType {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct UpdatePayload {
-  publishedfileid: String,
+  publishedfileid: u32,
   bytes_downloaded: usize,
+  bytes_total: usize,
   complete: bool
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 struct ErrorPayload {
-  publishedfileid: Option<String>,
+  publishedfileid: u32,
   error: String
 }
 
@@ -61,68 +62,6 @@ fn close_splashscreen(
   splashscreen.0.lock().expect("splashscreen lock fail").close().expect("splash close fail");
   // Show main window
   main.0.lock().expect("main lock fail").show().expect("main close fail");
-}
-
-#[tauri::command]
-async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
-  let config = &state.settings;
-  let mut dest = {
-    let fname = config.lock().unwrap().get().gamedir.as_ref().unwrap().join(format!("{}.vpk", item.publishedfileid));
-    std::fs::File::create(fname).expect("Could not create file")
-  };
-  let mut downloaded: usize = 0;
-  debug!("Starting download of file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size);
-  match reqwest::Client::new()
-    .get(&item.file_url)
-    .header("User-Agent", "L4D2-Workshop-Downloader")
-    .send()
-    .await
-  {
-    Ok(response) => {
-      let mut stream = response.bytes_stream();
-      let mut chunk_index: u8 = 0;
-      while let Some(result) = stream.next().await {
-        match result {
-          Ok(chunk) => {
-            if let Err(err) = dest.write(&chunk) {
-              error!("[{}] Write Error: {}", &item.publishedfileid, err);
-              break;
-            }
-            downloaded += chunk.len();
-            chunk_index += 1;
-            if chunk_index > 100 {
-              chunk_index = 0;
-              window.emit("progress", UpdatePayload {
-                publishedfileid: item.publishedfileid.clone(),
-                bytes_downloaded: downloaded,
-                complete: false
-              }).ok();
-            }
-          },
-          Err(err) => {
-            window.emit("progress", ErrorPayload {
-              publishedfileid: Some(item.publishedfileid.clone()),
-              error: err.to_string()
-            }).ok();
-            error!("Download for {} failed:\n{}", item.title, &err);
-            return Err(err.to_string())
-          }
-        }
-      }
-      dest.flush().ok();
-      window.emit("progress", UpdatePayload {
-        publishedfileid: item.publishedfileid.clone(),
-        bytes_downloaded: downloaded,
-        complete: true
-      }).ok();
-      debug!("Downloaded file \"{}\" (id {}) ({} bytes)", &item.title, item.publishedfileid, item.file_size);
-      return Ok(())
-    },
-    Err(err) => {
-      println!("Download failure for {}: {}", &item, err);
-      return Err(err.to_string())
-    }
-  }
 }
 
 fn setup_logging() {
@@ -201,6 +140,7 @@ fn main() {
     get_settings,
     save_settings,
     close_splashscreen,
+    search_workshop
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
