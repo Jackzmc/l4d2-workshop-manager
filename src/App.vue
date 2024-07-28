@@ -45,14 +45,10 @@ const BUILD_NUMBER = __BUILD_NUMBER__
 
 import { invoke } from '@tauri-apps/api/tauri'
 import TitleBar from '@/components/Titlebar.vue'
-// import Updateable from '@/components/sections/Updateable.vue'
 import Managed from '@/components/sections/Managed.vue'
-// import Unmanaged from '@/components/sections/Unmanaged.vue'
 import Workshop from '@/components/sections/Workshop.vue'
 import Settings from '@/components/sections/Settings.vue';
-// import Unknown from '@/components/sections/Unknown.vue'
-// import AddNew from '@/components/sections/AddNew.vue'
-// import Settings from '@/components/sections/Settings.vue'
+import AddContent from '@/components/sections/AddContent.vue'
 import { markRaw, ref, onMounted, computed, onBeforeMount } from 'vue'
 
 const SIDEBAR_SECTIONS = [
@@ -73,6 +69,12 @@ const SIDEBAR_SECTIONS = [
     title: "Settings",
     component: markRaw( Settings ),
     icon: "cog"
+  },
+  {
+    id: "add-content",
+    title: "Add Content",
+    component: markRaw( AddContent ),
+    icon: "plus"
   }
 ]
 let files = ref<Record<string, any>>({
