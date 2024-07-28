@@ -41,7 +41,7 @@
                     <th>Version</th>
                     <td>{{ props.addon.addon_data.info.version }}</td>
                 </tr>
-                <tr>
+                <tr v-if="chapters">
                     <th>Chapters</th>
                     <td><ul>
                         <li v-for="(chapter, i) in chapters" :key="i">
@@ -54,6 +54,7 @@
                     <td>{{ props.addon.addon_data.info.description }}</td>
                 </tr>
             </table>
+            <p class="has-text-centered mb-6" v-else>Could not parse addon information.</p>
             <h4 class="title is-4">Workshop Info</h4>
             <table class="table is-striped is-fullwidth" v-if=" props.addon.workshop_info ">
                 <tr>
@@ -78,6 +79,15 @@
                     <td>{{ uptoDateState ? 'Yes' : 'No' }}</td>
                 </tr>
             </table>
+            <div class="has-text-centered" v-else>
+                <p class="subtitle is-5">No workshop information available.</p>
+                <p>This can be caused by:</p>
+                <ul class="content">
+                    <li>The workshop page has been deleted, or made private</li>
+                    <li>The filename does not include it's workshop id</li>
+                    <li>Steam workshop API could not be fetched / No Internet</li>
+                </ul>
+            </div>
         </section>
         <footer class="modal-card-foot">
             <div class="buttons">
@@ -105,7 +115,7 @@ const emit = defineEmits( ["close", "refresh"] )
 let fetchingWorkshopInfo = ref(false)
 
 const addonName = computed(() => {
-    return props.addon.workshop_info?.title ?? props.addon.addon_info?.title ?? props.addon.filename 
+    return props.addon.workshop_info?.title ?? props.addon.addon_data?.info?.title ?? props.addon.filename 
 } )
 
 const chapters = computed( () => {
