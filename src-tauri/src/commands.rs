@@ -24,18 +24,11 @@ pub fn get_workshop_addons(state: tauri::State<'_, Data>) -> Result<Vec<util::Ad
 #[tauri::command]
 pub fn get_latest_workshop_info(state: tauri::State<'_, Data>, publishedfileid: u32) -> Result<WorkshopItem, String> {
     let ws = &state.workshop.clone();
-    let entries = vec![publishedfileid.to_string()];
-    debug!("ws.get_published_file_details {:?}", entries);
-    let mut latest_info = ws.get_published_file_details(&entries)
-        .map_err(|e| e.to_string())?;
-    if latest_info.len() == 0 {
-        // TODO: mark this in the cache, that it's deleted?
-        return Err("Could not find workshop info, may have been deleted or made private".to_string());
+    match util::get_workshop_info(ws, publishedfileid) {
+        Ok(None) => Err("Could not find workshop info, may have been deleted or made private".to_string()),
+        Err(e) => Err(e),
+        Ok(Some(item)) => Ok(item)
     }
-    debug!("got latest info for {}", publishedfileid);
-    let latest_info = latest_info.remove(0);
-    Ok(latest_info)
-
 }
 
 #[tauri::command]
@@ -73,9 +66,12 @@ async fn download_addon(state: tauri::State<'_, Data>, window: Window, published
     let mut file = {
         std::fs::File::create(&part_file_path).expect("Could not create part file")
     };
+    let item = util::get_workshop_info(&state.workshop.clone(), published_file_id)?;
+    let item = item.ok_or_else(|| "Could not find workshop item".to_string() )?;
     // TODO: get workshop item
     let mut bytes_downloaded: usize = 0;
-    debug!("Starting download of id={}", published_file_id);
+    let bytes_total: usize = item.file_size.parse().unwrap();
+    debug!("Starting download of id={} title={} bytes_total={}", published_file_id, item.title, bytes_total);
     match reqwest::Client::new()
         .get(&item.file_url)
         .header("User-Agent", "L4D2-Workshop-Downloader")
@@ -99,7 +95,7 @@ async fn download_addon(state: tauri::State<'_, Data>, window: Window, published
                             window.emit("progress", UpdatePayload {
                                 publishedfileid: published_file_id,
                                 bytes_downloaded,
-                                bytes_total: 0,
+                                bytes_total,
                                 complete: false
                             }).ok();
                         }
@@ -115,10 +111,12 @@ async fn download_addon(state: tauri::State<'_, Data>, window: Window, published
                 }
             }
             file.flush().ok();
-            std::fs::rename(part_file_path, dest_file_path)?;
+            std::fs::rename(part_file_path, dest_file_path)
+                .map_err(|e| e.to_string())?;
             window.emit("progress", UpdatePayload {
                 publishedfileid: published_file_id,
                 bytes_downloaded,
+                bytes_total,
                 complete: true
             }).ok();
             debug!("Downloaded (id {}) ({} bytes)", published_file_id, bytes_downloaded);

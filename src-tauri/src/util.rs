@@ -116,6 +116,17 @@ pub fn get_addon_data(path: &Path) -> Result<AddonData, String> {
         Err("No addoninfo.txt found".to_string())
     }
 }
+pub fn get_workshop_info(ws: &SteamWorkshop, publishedfileid: u32) -> Result<Option<WorkshopItem>, String> {
+    let entries = vec![publishedfileid.to_string()];
+    let mut latest_info = ws.get_published_file_details(&entries)
+        .map_err(|e| e.to_string())?;
+    if latest_info.len() == 0 {
+        // TODO: mark this in the cache, that it's deleted?
+        return Ok(None)
+    }
+    let latest_info = latest_info.remove(0);
+    return Ok(Some(latest_info))
+}
 
 pub fn get_mission_data(file: &mut File, vpk: &VPKVersion1) -> Option<MissionInfo> {
     for (path, entry) in &vpk.tree.files {
