@@ -1,7 +1,9 @@
 use std::io::Write;
+use std::sync::OnceLock;
 use futures::StreamExt;
 use log::{debug, error};
-use steam_workshop_api::WorkshopItem;
+use regex::Regex;
+use steam_workshop_api::{SearchOptions, WorkshopItem};
 use tauri::Window;
 use crate::{config, Data, ErrorPayload, UpdatePayload, util};
 
@@ -49,11 +51,22 @@ pub fn save_settings(state: tauri::State<Data>, changed: config::Settings) -> Re
     Ok(())
 }
 
+pub static WORKSHOP_URL_REGEX: OnceLock<Regex> = OnceLock::new();
 #[tauri::command]
 pub fn search_workshop(state: tauri::State<Data>, query: &str) -> Result<Vec<WorkshopItem>, String> {
+    // TODO: strip out url, and search for publishedfileid directly
+
     let ws = &state.workshop.clone();
-    ws.search_items(550, query, 25)
+    ws.search_items(&SearchOptions {
+        count: 30,
+        app_id: 550,
+        query: query.to_string(),
+        cursor: None,
+        required_tags: None,
+        excluded_tags: None,
+    })
         .map_err(|e| e.to_string())
+        .map(|r| r.items)
 }
 
 
@@ -73,7 +86,7 @@ async fn download_addon(state: tauri::State<'_, Data>, window: Window, published
     let bytes_total: usize = item.file_size.parse().unwrap();
     debug!("Starting download of id={} title={} bytes_total={}", published_file_id, item.title, bytes_total);
     match reqwest::Client::new()
-        .get(&item.file_url)
+        .get(&item.file_url.unwrap())
         .header("User-Agent", "L4D2-Workshop-Downloader")
         .send()
         .await
