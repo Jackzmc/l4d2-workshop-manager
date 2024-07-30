@@ -3166,9 +3166,9 @@ dependencies = [
 
 [[package]]
 name = "steam-workshop-api"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53c60d3252322f0ae5ed88a80810c46f750b5cfba8605b4406098c8d6a279a9d"
+checksum = "138251c0d2a2030b57284e547ac8351834fc1252cd39310781f8e02ac9c17fba"
 dependencies = [
  "lazy_static",
  "log",

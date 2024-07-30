@@ -10,11 +10,11 @@
                 </th>
                 <th>
                     <span>Item Name</span>
-                    <div class="is-inline is-pulled-right">
-                        <b-input v-model.lazy="search.value" placeholder="Search..." icon="search" rounded
-                            @blur="search.active = false" @focus="search.active = true"
-                            :size="search.active === false ? 'is-small' : ''" />
-                    </div>
+                    <b-button :loading="loading" class="is-inline ml-2" size="is-small" type="is-info" icon-left="sync"
+                        @click="refreshAddons"></b-button>
+                    <b-input class="is-inline is-pulled-right" v-model.lazy="search.value" placeholder="Search..." icon="search" rounded
+                        @blur="search.active = false" @focus="search.active = true"
+                        :size="search.active === false ? 'is-small' : ''" />
                 </th>
                 <th>File Size</th>
                 <th>Last Updated</th>

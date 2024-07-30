@@ -1,5 +1,20 @@
 <template>
-<div class="mx-5 mt-4">
+<div class="mx-5">
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-menu">
+            <b-field label="Sort">
+                <b-select placeholder="Select a name">
+                    <option v-for=" option in data " :value="option.id" :key="option.id">
+                        {{ option.user.first_name }}
+                    </option>
+                </b-select>
+            </b-field>
+        </div>
+        <div class="navbar-end">
+            <b-input :loading="loadState === LoadState.Loading" v-model="query" icon="search" expanded required native-type="text"
+    placeholder="Find an item" rounded />
+        </div>
+    </nav>
     <div class="box" v-if="loadState != LoadState.Downloading">
         <div class="columns is-variable is-8">
             <div class="column">
@@ -132,6 +147,8 @@ let loadState = ref<LoadState>(LoadState.Idle)
 let selectedItem = ref()
 let searchResults = ref()
 let manualInput = ref()
+
+let sortBy = ref()
 
 const selectedDescription = computed( () => {
     if ( !selectedItem.value ) return

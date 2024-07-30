@@ -13,6 +13,7 @@ use steam_workshop_api::{SteamWorkshop, WorkshopItem};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct AddonEntry {
+    file_path: String,
     file_name: String,
     file_size: u64,
     last_update_time: Option<u64>,
@@ -255,6 +256,7 @@ pub fn get_addons(workshop: &SteamWorkshop, dir: &Path) -> Result<Vec<AddonEntry
         }
         let workshop_info = workshop_info.map(|data| data.item);
         let file = AddonEntry {
+            file_path: entry.path().to_string_lossy().to_string(),
             file_name: entry.file_name().to_str().unwrap().to_string(),
             file_size: meta.size(),
             last_update_time: meta.modified().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
