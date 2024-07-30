@@ -6,6 +6,7 @@
 mod config;
 mod util;
 mod commands;
+mod downloads;
 
 use steam_workshop_api::{SteamWorkshop};
 use regex::Regex;
@@ -17,12 +18,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use flexi_logger::{colored_default_format, FileSpec, Logger, WriteMode};
 use log::{debug, error, info, log, trace, warn};
-use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings, search_workshop};
+use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings, search_workshop, WORKSHOP_URL_REGEX};
 use crate::util::{WORKSHOP_ID_REGEX};
 
 pub struct Data {
   pub settings: Arc<Mutex<config::SettingsManager>>,
   pub workshop: SteamWorkshop,
+  // pub downloads: DownloadManager // TODO: make download manager, queue downloads
 }
 
 struct SplashscreenWindow(Arc<Mutex<Window>>);
