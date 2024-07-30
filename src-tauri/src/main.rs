@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use flexi_logger::{colored_default_format, FileSpec, Logger, WriteMode};
 use log::{debug, error, info, log, trace, warn};
-use crate::commands::{get_latest_workshop_info, get_my_addons, get_settings, get_workshop_addons, save_settings, search_workshop, WORKSHOP_URL_REGEX};
+use crate::commands::{WORKSHOP_URL_REGEX};
 use crate::util::{WORKSHOP_ID_REGEX};
 
 pub struct Data {
@@ -136,13 +136,15 @@ fn main() {
     Ok(())
   })
   .invoke_handler(tauri::generate_handler![
-    get_latest_workshop_info,
-    get_my_addons,
-    get_workshop_addons,
-    get_settings,
-    save_settings,
+    commands::get_latest_workshop_info,
+    commands::get_my_addons,
+    commands::get_workshop_addons,
+    commands::get_settings,
+    commands::save_settings,
     close_splashscreen,
-    search_workshop
+    commands::search_workshop,
+    commands::toggle_addon,
+    commands::delete_addon
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");

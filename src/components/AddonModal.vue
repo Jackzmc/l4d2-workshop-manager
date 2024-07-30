@@ -110,12 +110,12 @@ import AddonTags from './AddonTags.vue';
 import { invoke } from '@tauri-apps/api';
 
 const props = defineProps( ['addon'] )
-const emit = defineEmits( ["close", "refresh"] )
+const emit = defineEmits( ["close", "update-item"] )
 
 let fetchingWorkshopInfo = ref(false)
 
-const addonName = computed(() => {
-    return props.addon.workshop_info?.title ?? props.addon.addon_data?.info?.title ?? props.addon.filename 
+const addonName = computed( () => {
+    return props.addon.workshop_info?.title ?? props.addon.addon_data?.info?.title ?? props.addon.file_name 
 } )
 
 const chapters = computed( () => {
@@ -151,7 +151,7 @@ async function getLatestWorkshop() {
             publishedfileid: Number( props.addon.workshop_info.publishedfileid )
         } )
         if ( result ) {
-            emit( "refresh", result )
+            emit( "update-item", result )
         }
         sendToast( {
             type: "is-success",
@@ -161,7 +161,7 @@ async function getLatestWorkshop() {
         console.error( "failed", err )
         sendToast( {
             type: "is-danger",
-            message: "<b>Fetching workshop information failed: </b>" + err.message
+            message: "<b>Fetching workshop information failed: </b>" + err
         } )
     } finally {
         fetchingWorkshopInfo.value = false
@@ -169,16 +169,36 @@ async function getLatestWorkshop() {
 }
 
 async function toggleAddon() {
-    await invoke( "toggle_addon", { file_name: props.addon.file_name } )
+    try {
+        const addon = await invoke( "toggle_addon", { path: props.addon.file_path } )
+        emit( "update-item", addon )
+        sendToast( {
+            type: "is-success",
+            message: addon.file_name.endsWith(".disabled") ? `Disabled addon successfully` : 'Enabled addon successfully'
+        } )
+    } catch ( err ) {
+        sendToast( {
+            type: "is-danger",
+            message: `<b>Could not toggle addon:</b> ${err}`,
+        })
+    }
    
 }
 async function deleteAddon() {
-    await invoke( "delete_addon", { file_name: props.addon.file_name } )
-    sendToast( {
-        type: "is-danger",
-        message: `Deleted addon ${props.addon.file_name}`
-    } )
-    emit("close")
+    try {
+        await invoke( "delete_addon", { path: props.addon.file_path } )
+        emit( "update-item", null )
+        sendToast( {
+            type: "is-danger",
+            message: `Deleted addon ${props.addon.file_name}`
+        } )
+        emit( "close" )
+    } catch ( err ) {
+        sendToast( {
+            type: "is-danger",
+            message: `<b>Could not toggle addon:</b> ${err}`
+        } )
+    }
     // awa
 }
 

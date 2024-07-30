@@ -16,6 +16,7 @@ createApp( App )
     .use( Buefy, {
         defaultIconPack: 'fas',
         defaultIconComponent: "font-awesome-icon",
+        defaultSnackbarDuration: 5000
     } )
     .component( 'font-awesome-icon', FontAwesomeIcon )
     .mount( '#app' )

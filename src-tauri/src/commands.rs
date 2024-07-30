@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use futures::StreamExt;
 use log::{debug, error};
@@ -6,6 +7,9 @@ use regex::Regex;
 use steam_workshop_api::{SearchOptions, WorkshopItem};
 use tauri::Window;
 use crate::{config, Data, ErrorPayload, UpdatePayload, util};
+use crate::util::AddonEntry;
+
+#[allow(dead_code)]
 
 #[tauri::command]
 pub fn get_my_addons(state: tauri::State<'_, Data>) -> Result<Vec<util::AddonEntry>, String> {
@@ -68,7 +72,6 @@ pub fn search_workshop(state: tauri::State<Data>, query: &str) -> Result<Vec<Wor
         .map_err(|e| e.to_string())
         .map(|r| r.items)
 }
-
 
 #[tauri::command]
 async fn download_addon(state: tauri::State<'_, Data>, window: Window, published_file_id: u32) -> Result<(), String> {
@@ -141,3 +144,45 @@ async fn download_addon(state: tauri::State<'_, Data>, window: Window, published
         }
     }
 }
+#[tauri::command]
+pub(crate) fn delete_addon(path: &str) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Err(format!("File does not exist at {:?}", path).to_string());
+    } else if path.is_dir() {
+        return Err(format!("File path {:?} provided is a folder", path).to_string());
+    } else {
+        debug!("deleting {:?}", path);
+        std::fs::remove_file(path).map_err(|e| e.to_string())
+    }
+}
+#[tauri::command]
+pub(crate) fn toggle_addon(state: tauri::State<'_, Data>, path: &str) -> Result<AddonEntry, String> {
+    let path = PathBuf::from(path);
+    if path.is_dir() {
+        return Err(format!("File path {:?} provided is a folder", path).to_string());
+    }
+    // let ext = path.extension().unwrap().to_string_lossy();
+    // let file_stem = path.file_stem().unwrap().to_string_lossy();
+    // if ext == "disabled" {
+    //     let new_path = path.clone();
+    // }
+    let file_name = path.file_name().unwrap().to_string_lossy();
+    let new_path;
+    let result: bool;
+    if file_name.ends_with(".disabled") {
+        // Remove the .disabled:
+        new_path = path.clone().with_extension("");
+        result = true;
+    } else if file_name.ends_with(".vpk") {
+        // Add on .disabled:
+        new_path = path.clone().with_file_name(format!("{}.disabled", file_name));
+        result = false;
+    } else {
+        return Err("Filename does not end with .disabled or .vpk, cannot toggle".to_string());
+    }
+    debug!("toggle_addon {:?} -> {:?}", &path, &new_path);
+    std::fs::rename(&path, &new_path).map_err(|e| e.to_string())?;
+    util::get_addon_info(&new_path)
+}
+

@@ -28,6 +28,7 @@
           :key="selected?.id" 
           :settings="settings"
           @refresh="onItems"
+          @update-item="onItemUpdate"
           @saved="newSettings => settings = newSettings"
         />
         <p v-else class="title is-4 has-text-centered mt-5">Select an item on the left to begin</p>
@@ -108,6 +109,20 @@ function onItems( entries: any[] ) {
   selectedFiles.value = entries
 }
 
+function onItemUpdate( oldItem, newItem ) {
+  const files = selectedFiles.value
+  const index = files.findIndex( item => item.file_name === oldItem.file_name )
+  if ( index == -1 ) return console.warn( "onItemUpdate: could not find index", oldItem )
+  if ( newItem ) {
+    files[index] = newItem
+  } else {
+    // No item, means deleted
+    files.splice(index, 1)
+  }
+
+  selectedFiles.value = files
+}
+
 onBeforeMount( async () => {
   settings.value = await invoke( "get_settings" )
   const fileCache = window.localStorage['files_cache']
@@ -173,5 +188,8 @@ body {
 .section-component {
   height: 720px !important;
   overflow: auto !important;
+}
+#app {
+  overflow-y: hidden;
 }
 </style>

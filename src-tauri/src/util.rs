@@ -232,6 +232,29 @@ pub(crate) fn get_workshop_data(ws: &SteamWorkshop, entries: &[DirEntry]) -> Has
 
     results
 }
+/// Gets addon info, assuming that the workshop information is already cached
+pub fn get_addon_info(path: &Path) -> Result<AddonEntry, String> {
+    if !path.exists() || path.is_dir() {
+        return Err("Path does not exist or is not a file".to_string())
+    }
+    let meta = path.metadata().unwrap();
+
+    let addon_data: Option<AddonData> = get_addon_data(&path).ok();
+    // We assume that the addon _should_ be cached
+    let workshop_info = find_workshop_id_in_str(&path.file_stem().unwrap().to_string_lossy())
+        .and_then(|id| get_cached_workshop_info(path, id));
+
+    Ok(AddonEntry {
+        file_path: path.to_string_lossy().to_string(),
+        file_name: path.file_name().unwrap().to_string_lossy().to_string(),
+        file_size: meta.size(),
+        last_update_time: meta.modified().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
+        create_time: meta.created().ok().and_then(|s| Some(s.duration_since(UNIX_EPOCH).unwrap().as_secs())),
+
+        workshop_info,
+        addon_data
+    })
+}
 pub fn get_addons(workshop: &SteamWorkshop, dir: &Path) -> Result<Vec<AddonEntry>, String> {
     let entries = get_vpks_in_folder(dir)?;
     let mut workshop_record = get_workshop_data(workshop, &entries);

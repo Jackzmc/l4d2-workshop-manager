@@ -1,7 +1,7 @@
 <template>
 <div class="mt-3">
     <!-- TODO: dont do full refresh -->
-    <AddonModal v-if=" showDetailAddon " :addon="showDetailAddon" @close="showDetailAddon = null" @refresh="refreshAddons" />
+    <AddonModal v-if=" showDetailAddon " :addon="showDetailAddon" @close="showDetailAddon = null" @update-item="onModalItemUpdate" />
     <table class="table is-fullwidth">
         <thead>
             <tr>
@@ -21,7 +21,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for="  item in itemsFiltered  " :key="item.filename">
+            <tr v-for="  item in itemsFiltered  " :key="item.file_name">
                 <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
                 <td>
                     <a @click="showDetails( item )">{{ item.workshop_info?.title ?? item.addon_data?.info?.title ?? item.file_name }}</a>
@@ -63,7 +63,7 @@ import AddonModal from '../AddonModal.vue';
 import AddonTags from '../AddonTags.vue';
 
 const props = defineProps(["items"])
-const emit = defineEmits(["refresh"])
+const emit = defineEmits(["refresh", "update-item"])
 
 let loading = ref(false)
 let active = ref(false)
@@ -155,5 +155,9 @@ async function refreshAddons() {
     const items = await invoke("get_workshop_addons")
     emit("refresh", items)
     lastUpdateTime = Date.now()
+}
+
+function onModalItemUpdate(newItem) {
+    emit("update-item", showDetailAddon.value, newItem)
 }
 </script>
