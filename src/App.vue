@@ -108,13 +108,18 @@ function onItems( entries: any[] ) {
   selectedFiles.value = entries
 }
 
-onBeforeMount(async () => {
+onBeforeMount( async () => {
   settings.value = await invoke( "get_settings" )
+  const fileCache = window.localStorage['files_cache']
+  if ( fileCache ) {
+    files.value = JSON.parse(fileCache)
+  }
 })
 
-onMounted(async () => {
+onMounted( async () => {
   files.value.managed = await invoke( "get_my_addons" )
-  files.value.workshop = await invoke("get_workshop_addons")
+  files.value.workshop = await invoke( "get_workshop_addons" )
+  window.localStorage['files_cache'] = JSON.stringify(files.value)
 })
 </script>
 
