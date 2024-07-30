@@ -1,20 +1,24 @@
 # l4d2-addon-manager
 
-A work in progress alternative to my own https://github.com/Jackzmc/l4d2-workshop-downloader that is a combination of rust and Vue.JS via Tauri.
+A work in progress GUI to manage your L4D2 addons. It allows you to quickly toggle, delete, and view all your addons, letting you filter your long list of addons.
+In addition, let's you quickly offload workshop addons to be manually installed, allowing them to be loaded instantly on game startup.
 
-Complete addon management is implemented and is stable.
+**Current Features:**
+
+* View the name of installed addon's
+* See addon's categories
+* View all the chapter ID's of installed maps
+* Toggling and deleting addons
 
 **Upcoming Features:**
 
-* Enable / Disable Addons
-* Better Search (Use steam website directly?)
-* Uninstall addon support
-* Rename unknown in-app with search for functionality
+* Direct workshop download support
+* Moving addons from workshop
+* Updating addons
 
 ## Preview
 
-![image](https://user-images.githubusercontent.com/4030546/122625448-d266df00-d06a-11eb-83b7-b126f42ccd27.png)
-
+![image](https://github.com/user-attachments/assets/5cebfa48-b294-4279-87b0-fefb2bf4bdcd)
 
 ## License
 
