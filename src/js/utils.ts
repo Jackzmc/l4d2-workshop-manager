@@ -1,4 +1,4 @@
-import { SnackbarProgrammatic as Snackbar } from 'buefy'
+import { SnackbarProgrammatic as Snackbar, DialogProgrammatic as Dialog } from 'buefy'
 
 export function formatBytes( bytes: number ) {
     if(bytes > 1000000000) {
@@ -18,4 +18,8 @@ export function formatDate(date: number) {
 
 export function sendToast( options: any ) {
     new Snackbar().open(options)
+}
+
+export function sendAlert( options: any ) {
+    new Dialog().alert(options)
 }

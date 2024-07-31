@@ -144,7 +144,8 @@ fn main() {
     close_splashscreen,
     commands::search_workshop,
     commands::toggle_addon,
-    commands::delete_addon
+    commands::delete_addon,
+    commands::migrate_addon
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");

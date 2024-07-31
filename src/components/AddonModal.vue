@@ -91,10 +91,12 @@
         </section>
         <footer class="modal-card-foot">
             <div class="buttons">
-                <b-button type="is-info" :loading="fetchingWorkshopInfo" v-if="props.addon.workshop_info && uptoDateState" @click="getLatestWorkshop">Check for Updates</b-button>
+                <b-button type="is-info" :loading="fetchingWorkshopInfo" v-if="props.addon.workshop_info && uptoDateState" @click="getLatestWorkshop">{{ isWorkshop ? 'Refresh Workshop Info' : 'Check for Updates' }}</b-button>
                 <button class="button is-info" v-else-if=" props.addon.workshop_info && !uptoDateState ">Update</button>
-                <button class="button is-danger" @click="deleteAddon">Delete</button>
+                <button class="button is-danger" @click="deleteAddon" v-if="!isWorkshop">Delete</button>
+                <button class="button is-warning" @click="migrateAddon" v-if="isWorkshop ">Migrate</button>
                 <button class="button is-warning" @click="toggleAddon"> {{ isDisabled ? 'Enable' : 'Disable' }}</button>
+
 
                 <button class="button" @click="emit( 'close' )">Close</button>
             </div>
@@ -105,7 +107,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { formatBytes, formatDate, sendToast } from '../js/utils';
+import { formatBytes, formatDate, sendAlert, sendToast } from '../js/utils';
 import AddonTags from './AddonTags.vue';
 import { invoke } from '@tauri-apps/api';
 
@@ -117,6 +119,10 @@ let fetchingWorkshopInfo = ref(false)
 const addonName = computed( () => {
     return props.addon.workshop_info?.title ?? props.addon.addon_data?.info?.title ?? props.addon.file_name 
 } )
+
+const isWorkshop = computed( () => {
+    return props.addon.file_path.includes('workshop/')
+})
 
 const chapters = computed( () => {
     const list = props.addon.addon_data?.mission_info?.modes?.coop
@@ -168,6 +174,27 @@ async function getLatestWorkshop() {
     }
 }
 
+async function migrateAddon() {
+    try {
+        const url = `https://steamcommunity.com/sharedfiles/filedetails/?id=${props.addon.workshop_info?.publishedfileid}`
+        const addon = await invoke( "migrate_addon", { path: props.addon.file_path } )
+        emit( "update-item", addon )
+        sendAlert( {
+            title: "Addon Migrated",
+            message: `Addon has been copied to the non-workshop folder. You will have to manually unsubscribe from the addon. Workshop link: <a target="_blank" href="${url}">${url}</a>`,
+            confirmText: "Done",
+            onConfirm: () => {
+                emit("close")
+            }
+        })
+    } catch ( err ) {
+        sendToast( {
+            type: "is-danger",
+            message: `<b>Could not migrate addon:</b> ${err}`,
+        } )
+    }
+}
+
 async function toggleAddon() {
     try {
         const addon = await invoke( "toggle_addon", { path: props.addon.file_path } )
@@ -182,7 +209,6 @@ async function toggleAddon() {
             message: `<b>Could not toggle addon:</b> ${err}`,
         })
     }
-   
 }
 async function deleteAddon() {
     try {

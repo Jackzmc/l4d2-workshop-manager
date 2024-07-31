@@ -162,22 +162,14 @@ pub(crate) fn toggle_addon(state: tauri::State<'_, Data>, path: &str) -> Result<
     if path.is_dir() {
         return Err(format!("File path {:?} provided is a folder", path).to_string());
     }
-    // let ext = path.extension().unwrap().to_string_lossy();
-    // let file_stem = path.file_stem().unwrap().to_string_lossy();
-    // if ext == "disabled" {
-    //     let new_path = path.clone();
-    // }
     let file_name = path.file_name().unwrap().to_string_lossy();
     let new_path;
-    let result: bool;
     if file_name.ends_with(".disabled") {
         // Remove the .disabled:
         new_path = path.clone().with_extension("");
-        result = true;
     } else if file_name.ends_with(".vpk") {
         // Add on .disabled:
         new_path = path.clone().with_file_name(format!("{}.disabled", file_name));
-        result = false;
     } else {
         return Err("Filename does not end with .disabled or .vpk, cannot toggle".to_string());
     }
@@ -185,4 +177,23 @@ pub(crate) fn toggle_addon(state: tauri::State<'_, Data>, path: &str) -> Result<
     std::fs::rename(&path, &new_path).map_err(|e| e.to_string())?;
     util::get_addon_info(&new_path)
 }
+
+#[tauri::command]
+pub(crate) fn migrate_addon(state: tauri::State<'_, Data>, path: &str) -> Result<AddonEntry, String> {
+    let path = PathBuf::from(path);
+    if path.is_dir() {
+        return Err(format!("File path {:?} provided is a folder", path).to_string());
+    }
+    let parent_name = path.parent().unwrap().file_name().unwrap().to_string_lossy();
+    if parent_name != "workshop" {
+        return Err(format!("migrate_addon called on file that is not in a workshop folder.").to_string());
+    }
+    let file_name = path.file_name().unwrap().to_str().unwrap();
+    let new_path = path.parent().unwrap().with_file_name(file_name);
+    debug!("migrate_addon {:?} -> {:?}", &path, &new_path);
+
+    std::fs::copy(&path, &new_path).map_err(|e| e.to_string())?;
+    util::get_addon_info(&new_path)
+}
+
 
