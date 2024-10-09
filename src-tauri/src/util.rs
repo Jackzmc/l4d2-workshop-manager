@@ -185,7 +185,7 @@ fn get_vpks_in_folder(path: &Path) -> Result<Vec<DirEntry>, String> {
         }
     }
     debug!("found {} vpks in {:?}", files.len(), path);
-    return Ok(files);
+    Ok(files)
 }
 
 pub(crate) struct WorkshopResult {
@@ -272,8 +272,12 @@ pub fn get_addons(workshop: &SteamWorkshop, dir: &Path) -> Result<Vec<AddonEntry
         if let Some(data) = &workshop_info {
             if !data.cached {
                 let content = serde_json::to_string(&data.item).unwrap();
-                let mut path = path.clone();
-                path.set_file_name(format!("{}_ws.json", data.item.publishedfileid));
+                let mut path = path.parent().unwrap().join(".addon_manager/");
+                if !path.exists() {
+                    std::fs::create_dir(&path).ok();
+                }
+                path.push(format!("{}.json", data.item.publishedfileid));
+                debug!("writing cache to {:?}", &path);
                 std::fs::write(path, content).ok();
             }
         }
@@ -299,7 +303,7 @@ pub fn find_workshop_id_in_str(file_name: &str) -> Option<u32> {
         .map(|c| c[0].parse().unwrap())
 }
 pub fn get_cached_workshop_info(path: &Path, workshop_id: u32) -> Option<WorkshopItem> {
-    let path = path.with_file_name(format!("{}_ws.json", workshop_id));
+    let path = path.parent()?.join(".addon_manager").join(format!("{}.json", workshop_id));
     match std::fs::read_to_string(&path) {
         Ok(content) => {
             serde_json::from_str(&content).ok()
